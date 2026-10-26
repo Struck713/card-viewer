@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1, "catalogVersion": "0.0.0-dev", "gameVersion": "dev",
+  "cards": [
+    { "id": "b_001", "name": "Garbage Addict", "color": "BLACK", "type": "CREATURE",
+      "rarity": "COMMON", "manaCost": 3, "attack": 1, "health": 1, "tribe": null,
+      "description": "On play: Rummage. On death: Rummage.",
+      "abilities": ["rummage", "rummage_on_death"], "collectible": true,
+      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] },
+    { "id": "t_019", "name": "Serene Yeti", "color": "TEAL", "type": "CREATURE",
+      "rarity": "EPIC", "manaCost": 4, "attack": 2, "health": 4, "tribe": "yeti",
+      "description": "Ambush", "abilities": ["ambush"], "collectible": true,
+      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] },
+    { "id": "gen_str_001", "name": "Orbital Strike", "color": "GENERIC", "type": "STRATAGEM",
+      "rarity": "RARE", "manaCost": 3, "attack": null, "health": null, "tribe": null,
+      "description": "Deal 3 damage to any target.", "abilities": [], "collectible": true,
+      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.0.0-dev",
+  "gameVersion": "dev",
+  "cardsUrl": "/data/v1/releases/0.0.0-dev/cards.json",
+  "keywordsUrl": "/data/v1/releases/0.0.0-dev/keywords.json"
+}

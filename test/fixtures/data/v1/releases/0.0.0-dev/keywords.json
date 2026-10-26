@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1, "catalogVersion": "0.0.0-dev", "gameVersion": "dev",
+  "keywords": [
+    { "id": "ambush", "name": "Ambush", "description": "Cannot be targeted when played. Loses Ambush after it attacks." },
+    { "id": "rummage", "name": "Rummage", "description": "Select a card of lesser value in your graveyard, then return it to your hand. It costs one less." }
+  ],
+  "abilityKeywords": { "ambush": "ambush", "rummage": "rummage", "rummage_on_death": null }
+}
