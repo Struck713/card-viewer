@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference-only submodule, not part of this app's lint surface.
+    "vendor/**",
+    // Agent tooling, not part of this app's lint surface.
+    ".claude/**",
   ]),
 ]);
 

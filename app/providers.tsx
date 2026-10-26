@@ -6,19 +6,17 @@ import { getCatalogOrigin } from '../lib/api/config';
 import { loadStats } from '../lib/api/stats';
 import { CatalogContext, StatsContext, type CatalogState, type StatsState } from '../lib/hooks/context';
 
+const origin = getCatalogOrigin();
+const missingOriginError: { status: 'network-error'; error: unknown } | null = origin
+  ? null
+  : { status: 'network-error', error: new Error('NEXT_PUBLIC_CATALOG_ORIGIN is not set') };
+
 export function AppProviders({ children }: { children: ReactNode }) {
-  const [catalog, setCatalog] = useState<CatalogState>({ status: 'loading' });
-  const [stats, setStats] = useState<StatsState>({ status: 'loading' });
+  const [catalog, setCatalog] = useState<CatalogState>(missingOriginError ?? { status: 'loading' });
+  const [stats, setStats] = useState<StatsState>(missingOriginError ?? { status: 'loading' });
 
   useEffect(() => {
-    const origin = getCatalogOrigin();
-    if (!origin) {
-      const error = new Error('NEXT_PUBLIC_CATALOG_ORIGIN is not set');
-      setCatalog({ status: 'network-error', error });
-      setStats({ status: 'network-error', error });
-      return;
-    }
-
+    if (!origin) return;
     let cancelled = false;
     loadCatalog(origin).then((result) => {
       if (!cancelled) setCatalog(result);
