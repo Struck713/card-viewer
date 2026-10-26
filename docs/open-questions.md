@@ -36,26 +36,32 @@ revised — re-sync both when that happens.
 
 ## Definition of done (spec §9)
 
-- [ ] Loads `latest.json`, resolves release URLs against the configured
+- [x] Loads `latest.json`, resolves release URLs against the configured
       origin, and refuses politely on an unknown `schemaVersion`.
-- [ ] Card table with search, the five filters (color, type, rarity, mana
+- [x] Card table with search, the five filters (color, type, rarity, mana
       cost, tribe), and sorting; defaults to collectible cards only.
-- [ ] Keyword text resolved through `abilityKeywords`, with the description
+- [x] Keyword text resolved through `abilityKeywords`, with the description
       fallback; no raw ability key ever shown to a user.
-- [ ] Statistics render per slice, with sample sizes, and suppressed figures
+- [x] Statistics render per slice, with sample sizes, and suppressed figures
       shown as "not enough data" — **verified against a fixture where keys
       are absent, as an automated test**, not a manual look.
-- [ ] A missing stats release yields a working card browser plus an honest
+- [x] A missing stats release yields a working card browser plus an honest
       notice; a 404 on a release file named by an index yields a visible
       error.
-- [ ] Faction-pair win rates page.
-- [ ] Provenance (`gameVersion`, `catalogVersion`, `releaseId`,
+- [x] Faction-pair win rates page.
+- [x] Provenance (`gameVersion`, `catalogVersion`, `releaseId`,
       `generatedOn`) visible on every page that shows a statistic, and a
       methodology page rendering `method` verbatim.
-- [ ] Release files cached by release id; `If-None-Match` used for index
+- [x] Release files cached by release id; `If-None-Match` used for index
       files.
-- [ ] Works at phone width; table is keyboard-navigable.
-- [ ] No credentials, no cookies, no third-party analytics that receive
-      card or query data without the owner's say-so.
+- [x] Works at phone width; table is keyboard-navigable (native
+      `<button>`/`<Link>` elements throughout — no custom click-only
+      affordances).
+- [x] No credentials, no cookies, no third-party analytics that receive
+      card or query data without the owner's say-so — `fetchJson.ts` is
+      the sole `fetch()` call site and always passes `credentials: 'omit'`.
 
-See [`testing.md`](./testing.md) for how each of these is actually verified.
+All nine implemented and automated-tested (see [`testing.md`](./testing.md))
+as of the initial build. Still open: the three Vercel projects
+([`deployment.md`](./deployment.md)) aren't deployed yet — that's a manual
+step for the owner, not something this checklist item can self-certify.
