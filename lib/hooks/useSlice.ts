@@ -35,7 +35,8 @@ function isMatchType(value: string | null): value is MatchType {
 export function useSlice(): UseSliceResult {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const rawSearchParams = useSearchParams();
+  const searchParams = rawSearchParams ?? new URLSearchParams();
 
   const tierParam = searchParams.get('tier');
   const matchParam = searchParams.get('match');
