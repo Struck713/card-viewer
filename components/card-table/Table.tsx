@@ -86,11 +86,13 @@ export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQ
                   </Link>
                 </td>
                 <td className="py-2 pr-3">
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${faction.swatchClassName} mr-1 align-middle`}
-                    aria-hidden="true"
-                  />
-                  <span className={faction.textClassName}>{faction.label}</span>
+                  <span className="flex items-center gap-1">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${faction.swatchClassName}`}
+                      aria-hidden="true"
+                    />
+                    <span className={faction.textClassName}>{faction.label}</span>
+                  </span>
                 </td>
                 <td className="py-2 pr-3">{card.type}</td>
                 <td className="py-2 pr-3">{card.rarity}</td>
