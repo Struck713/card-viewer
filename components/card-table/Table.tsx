@@ -18,6 +18,10 @@ interface TableProps {
   // Appended to each row's /cards/[id] link so the current slice/release
   // selection survives navigation (docs/data-layer.md §4.6).
   linkQuery: string;
+  // method.ratePrecision from the loaded stats release — undefined when
+  // stats aren't loaded, in which case formatRate falls back to one
+  // decimal place.
+  ratePrecision?: string;
 }
 
 function SortButton({
@@ -39,7 +43,7 @@ function SortButton({
   );
 }
 
-export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQuery }: TableProps) {
+export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQuery, ratePrecision }: TableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -100,7 +104,7 @@ export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQ
                     ) : isSuppressed(stat, col.key) ? (
                       <span className="text-neutral-500">Not enough data</span>
                     ) : (
-                      formatRate(statValue(stat, col.key) as number)
+                      formatRate(statValue(stat, col.key) as number, ratePrecision)
                     )}
                   </td>
                 ))}

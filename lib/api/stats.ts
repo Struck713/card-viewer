@@ -17,8 +17,18 @@ export async function loadStats(origin: string): Promise<StatsResult> {
     return { status: 'schema-mismatch', got: index.schemaVersion };
   }
 
-  const cardStatsUrl = new URL(index.cardStatsUrl, origin).toString();
-  const deckStatsUrl = new URL(index.deckStatsUrl, origin).toString();
+  let cardStatsUrl: string;
+  let deckStatsUrl: string;
+  try {
+    cardStatsUrl = new URL(index.cardStatsUrl, origin).toString();
+    deckStatsUrl = new URL(index.deckStatsUrl, origin).toString();
+  } catch {
+    // Same reasoning as catalog.ts's loadCatalogFiles: an unparseable
+    // named URL is an API inconsistency, and must resolve to a result
+    // rather than throw.
+    return { status: 'inconsistent', url: index.cardStatsUrl };
+  }
+
   let cardStats: CardStatsResponse;
   let deckStats: DeckStatsResponse;
   try {

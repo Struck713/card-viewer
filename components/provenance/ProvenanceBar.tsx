@@ -9,7 +9,7 @@ import { useStats } from '../../lib/hooks/useStats';
 // docs/suppression-and-states.md.
 export function ProvenanceBar() {
   const catalog = useCatalog();
-  const { stats, catalogVersionMismatch } = useStats();
+  const { stats, statsCatalog, catalogVersionMismatch } = useStats();
 
   if (catalog.status === 'loading') {
     return <p className="px-3 py-2 text-xs text-neutral-500">Loading provenance…</p>;
@@ -44,6 +44,11 @@ export function ProvenanceBar() {
         <span className="font-medium text-amber-700">
           Statistics describe catalog {stats.data.index.catalogVersion}, not the {catalogVersion} release being
           browsed.
+        </span>
+      )}
+      {catalogVersionMismatch && statsCatalog.status !== 'ok' && statsCatalog.status !== 'loading' && (
+        <span className="font-medium text-red-700">
+          Could not verify the catalog release the statistics describe — its own data could not be loaded.
         </span>
       )}
     </div>

@@ -7,8 +7,8 @@ import { Table } from '../../components/card-table/Table';
 import { sortRows, type CardRow, type SortDirection, type SortKey } from '../../components/card-table/columns';
 import { ApiInconsistent } from '../../components/empty-states/ApiInconsistent';
 import { EmptyState } from '../../components/empty-states/EmptyState';
-import { NotPublishedYet } from '../../components/empty-states/NotPublishedYet';
 import { SchemaMismatch } from '../../components/empty-states/SchemaMismatch';
+import { StatsStatusBanner } from '../../components/empty-states/StatsStatusBanner';
 import { ProvenanceBar } from '../../components/provenance/ProvenanceBar';
 import { SliceSelector } from '../../components/slice-selector/SliceSelector';
 import type { Card, CardStat, CardType, Color, Rarity } from '../../lib/api/types';
@@ -18,8 +18,12 @@ import { useStats } from '../../lib/hooks/useStats';
 
 const DEFAULT_FILTERS: FilterState = { color: 'all', type: 'all', rarity: 'all', manaCost: 'all', tribe: 'all' };
 
-function distinctSorted<T>(values: T[]): T[] {
-  return Array.from(new Set(values)).sort();
+function distinctSorted<T>(values: T[], compare?: (a: T, b: T) => number): T[] {
+  return Array.from(new Set(values)).sort(compare);
+}
+
+function compareNumbers(a: number, b: number): number {
+  return a - b;
 }
 
 export function CardsPageClient() {
@@ -45,7 +49,7 @@ export function CardsPageClient() {
       colors: distinctSorted(collectibleCards.map((card) => card.color)) as Color[],
       types: distinctSorted(collectibleCards.map((card) => card.type)) as CardType[],
       rarities: distinctSorted(collectibleCards.map((card) => card.rarity)) as Rarity[],
-      manaCosts: distinctSorted(collectibleCards.map((card) => card.manaCost)),
+      manaCosts: distinctSorted(collectibleCards.map((card) => card.manaCost), compareNumbers),
       tribes: distinctSorted(collectibleCards.map((card) => card.tribe).filter((tribe): tribe is string => tribe !== null)),
     }),
     [collectibleCards],
@@ -123,9 +127,7 @@ export function CardsPageClient() {
     <div className="space-y-4">
       <ProvenanceBar />
       <SliceSelector tierGroup={slice.tierGroup} matchType={slice.matchType} onChange={slice.setSlice} />
-      {stats.status === 'not-published' && <NotPublishedYet />}
-      {stats.status === 'schema-mismatch' && <SchemaMismatch got={stats.got} />}
-      {stats.status === 'inconsistent' && <ApiInconsistent url={stats.url} />}
+      <StatsStatusBanner stats={stats} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox value={search} onChange={setSearch} />
         <Filters value={filters} onChange={setFilters} options={options} />
@@ -140,6 +142,7 @@ export function CardsPageClient() {
         sortDirection={sortDirection}
         onSort={handleSort}
         linkQuery={slice.toQueryString()}
+        ratePrecision={stats.status === 'ok' ? stats.data.cardStats.method.ratePrecision : undefined}
       />
     </div>
   );

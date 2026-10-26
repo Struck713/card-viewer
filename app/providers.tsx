@@ -18,12 +18,25 @@ export function AppProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!origin) return;
     let cancelled = false;
-    loadCatalog(origin).then((result) => {
-      if (!cancelled) setCatalog(result);
-    });
-    loadStats(origin).then((result) => {
-      if (!cancelled) setStats(result);
-    });
+    loadCatalog(origin).then(
+      (result) => {
+        if (!cancelled) setCatalog(result);
+      },
+      (error) => {
+        // Defense in depth: loadCatalog/loadStats resolve to a typed
+        // result for every known failure mode, but a promise that somehow
+        // still rejects must not leave the UI stuck on "loading" forever.
+        if (!cancelled) setCatalog({ status: 'network-error', error });
+      },
+    );
+    loadStats(origin).then(
+      (result) => {
+        if (!cancelled) setStats(result);
+      },
+      (error) => {
+        if (!cancelled) setStats({ status: 'network-error', error });
+      },
+    );
     return () => {
       cancelled = true;
     };

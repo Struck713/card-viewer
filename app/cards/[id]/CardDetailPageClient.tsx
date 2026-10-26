@@ -6,8 +6,8 @@ import { PrintedData } from '../../../components/card-detail/PrintedData';
 import { StatRows } from '../../../components/card-detail/StatRows';
 import { ApiInconsistent } from '../../../components/empty-states/ApiInconsistent';
 import { EmptyState } from '../../../components/empty-states/EmptyState';
-import { NotPublishedYet } from '../../../components/empty-states/NotPublishedYet';
 import { SchemaMismatch } from '../../../components/empty-states/SchemaMismatch';
+import { StatsStatusBanner } from '../../../components/empty-states/StatsStatusBanner';
 import { ProvenanceBar } from '../../../components/provenance/ProvenanceBar';
 import { useCatalog } from '../../../lib/hooks/useCatalog';
 import { useSlice } from '../../../lib/hooks/useSlice';
@@ -89,15 +89,10 @@ export function CardDetailPageClient({ id }: { id: string }) {
       <section>
         <h2 className="text-sm font-semibold text-neutral-700">Statistics</h2>
         <div className="mt-2">
-          {stats.status === 'not-published' && <NotPublishedYet />}
-          {stats.status === 'schema-mismatch' && <SchemaMismatch got={stats.got} />}
-          {stats.status === 'inconsistent' && <ApiInconsistent url={stats.url} />}
-          {stats.status === 'network-error' && (
-            <EmptyState tone="error" title="Couldn't load statistics" description="A network error occurred. Please try again." />
-          )}
+          <StatsStatusBanner stats={stats} />
           {stats.status === 'ok' &&
             (cardStat ? (
-              <StatRows stat={cardStat} />
+              <StatRows stat={cardStat} ratePrecision={stats.data.cardStats.method.ratePrecision} />
             ) : (
               <EmptyState
                 title="No published data for this slice"

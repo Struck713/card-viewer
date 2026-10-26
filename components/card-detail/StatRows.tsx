@@ -13,7 +13,7 @@ const ROWS: { field: StatField; label: string; sampleKey?: keyof NonNullable<Car
 
 // One row per figure, always — a suppressed figure gets an explicit "not
 // enough data" row rather than being omitted (docs/pages-and-components.md).
-export function StatRows({ stat }: { stat: CardStat }) {
+export function StatRows({ stat, ratePrecision }: { stat: CardStat; ratePrecision?: string }) {
   return (
     <table className="w-full text-sm">
       <tbody>
@@ -32,7 +32,7 @@ export function StatRows({ stat }: { stat: CardStat }) {
                   <span className="text-neutral-500">Not enough data</span>
                 ) : (
                   <>
-                    <span className="font-medium">{formatRate(value as number)}</span>
+                    <span className="font-medium">{formatRate(value as number, ratePrecision)}</span>
                     {sample !== undefined && <span className="ml-2 text-xs text-neutral-500">n≈{sample}</span>}
                   </>
                 )}

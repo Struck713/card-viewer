@@ -20,8 +20,19 @@ async function loadCatalogFiles(
   cardsUrl: string,
   keywordsUrl: string,
 ): Promise<CatalogResult> {
-  const cardsUrlAbs = new URL(cardsUrl, origin).toString();
-  const keywordsUrlAbs = new URL(keywordsUrl, origin).toString();
+  let cardsUrlAbs: string;
+  let keywordsUrlAbs: string;
+  try {
+    cardsUrlAbs = new URL(cardsUrl, origin).toString();
+    keywordsUrlAbs = new URL(keywordsUrl, origin).toString();
+  } catch {
+    // The index named a URL that isn't even parseable — an API
+    // inconsistency, same family as a named release file 404ing, and
+    // must resolve to a result rather than throw (an uncaught throw here
+    // would reject the caller's promise with no .catch(), leaving the UI
+    // stuck on "loading" forever).
+    return { status: 'inconsistent', url: cardsUrl };
+  }
 
   let cardsRes: CardsResponse;
   let keywordsRes: KeywordsResponse;

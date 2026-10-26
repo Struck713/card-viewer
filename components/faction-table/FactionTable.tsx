@@ -8,7 +8,7 @@ function factionPairLabel(factions: DeckStat['factions']): string {
 
 // No deck-list affordance — deck-stats.json has no card list, deck code,
 // or hash (docs/pages-and-components.md). Just the comparison itself.
-export function FactionTable({ decks }: { decks: DeckStat[] }) {
+export function FactionTable({ decks, ratePrecision }: { decks: DeckStat[]; ratePrecision?: string }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[480px] border-collapse text-sm">
@@ -42,11 +42,11 @@ export function FactionTable({ decks }: { decks: DeckStat[] }) {
                 {deck.winRate === undefined ? (
                   <span className="text-neutral-500">Not enough data</span>
                 ) : (
-                  formatRate(deck.winRate)
+                  formatRate(deck.winRate, ratePrecision)
                 )}
               </td>
               <td className="py-2 pr-4">
-                {deck.matches === undefined ? <span className="text-neutral-500">—</span> : deck.matches}
+                {deck.matches === undefined ? <span className="text-neutral-500">Not enough data</span> : deck.matches}
               </td>
             </tr>
           ))}
