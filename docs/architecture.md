@@ -2,11 +2,16 @@
 
 ## Stack
 
-- **Next.js** (App Router, latest stable). No custom server, no API routes
-  for proxying — the catalog API already has CORS wide open
-  (`Access-Control-Allow-Origin: *`, no credentials), so the browser can call
-  it directly. Next's only jobs here are routing, static asset bundling, and
-  giving us a component model + Tailwind integration.
+- **Next.js** (App Router, latest stable, plus one Pages API route — see
+  below). No custom server, and no API routes for *proxying* catalog
+  requests — the catalog API already has CORS wide open
+  (`Access-Control-Allow-Origin: *`, no credentials), so the browser calls
+  it directly wherever it's actually hosted. The one API route that does
+  exist (`pages/api/catalog.js`) isn't a proxy in front of the catalog;
+  it *is* the catalog, for now — see "Embedded catalog API route" below and
+  [`catalog-hosting.md`](./catalog-hosting.md). Next's other jobs here are
+  routing, static asset bundling, and giving us a component model + Tailwind
+  integration.
 - **TailwindCSS** for styling. No component library on top. The spec
   offered two options for the no-card-art problem (§1.4): a text/type-based
   design, or an image source from the owner. Resolved: the owner confirmed
@@ -15,12 +20,23 @@
   or simple icon, not an attempt to fake real art) everywhere a card would
   show art, rather than redesigning around pure text. This keeps swapping in
   real art later a one-component change instead of a layout rework.
-- **No backend.** Per spec §5 quality bar: "static hosting is enough (no
-  backend, no server-side rendering needed)." Treat this literally: the site
-  should work as static files plus client-side fetches. Don't build an API
-  route that re-fetches the catalog server-side unless a concrete need shows
-  up (e.g. hiding `CATALOG_ORIGIN`, which isn't a secret — it's public
-  config).
+- **No backend for the site's own logic.** Per spec §5 quality bar: "static
+  hosting is enough (no backend, no server-side rendering needed)." The
+  site itself should work as static files plus client-side fetches against
+  `CATALOG_ORIGIN`. Don't build an API route that re-fetches the catalog
+  server-side on the site's behalf (e.g. to hide `CATALOG_ORIGIN`, which
+  isn't a secret — it's public config) — the browser still talks straight
+  to `CATALOG_ORIGIN`, exactly as before.
+
+  The one exception, `pages/api/catalog.js`, isn't that kind of API route:
+  it doesn't proxy or re-fetch anything, has no business logic, and reads
+  no request data beyond what a static file server would. It's the
+  catalog's own `server.mjs` (see [`catalog-hosting.md`](./catalog-hosting.md)),
+  embedded here only because we're the ones hosting the catalog *for now*
+  and one Vercel project is simpler to run than two. It gets deleted
+  entirely once a real `CATALOG_ORIGIN` exists elsewhere — it is not a
+  server the site depends on in the architectural sense this bullet is
+  about.
 
 ## Rendering strategy
 
@@ -83,10 +99,29 @@ components/
   empty-states/                # "not published yet", "schema mismatch", "inconsistent API"
   card-art/
     CardArtPlaceholder.tsx     # generic filler image/block used everywhere art would go
+pages/
+  api/
+    catalog.js                 # embedded catalog API route (see below) — Pages Router,
+                                # coexists with the App Router `app/` tree above
+catalog-api/
+  server.mjs                   # literal copy of vendor/cardgame/catalog/src/server.mjs
+  public/                      # literal copy of vendor/cardgame/catalog/public — generated, not hand-edited
 docs/                          # this folder
 vendor/
   cardgame/                    # git submodule — reference only, not imported by app code
 ```
+
+### Embedded catalog API route
+
+`pages/api/catalog.js` + a `rewrites()` block in `next.config.ts` expose
+`catalog-api/server.mjs`'s request handler at `/data/v1/*` and `/healthz`,
+inside this same Next.js app and the same Vercel deployment. This exists
+only because this project is temporarily the one hosting the catalog (see
+[`catalog-hosting.md`](./catalog-hosting.md)); it is not server-side
+rendering, not a proxy, and not a precedent for adding other API routes.
+The browser still fetches `CATALOG_ORIGIN` directly and has no idea the
+origin it's calling happens to be served by the same app — see that doc's
+guardrails for why that must stay true.
 
 ## Configuration
 

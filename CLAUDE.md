@@ -17,8 +17,10 @@ written out in `docs/`. Check there first.
 
 ## Key things to not get wrong
 
-- **No backend.** Static hosting, client-side fetches straight to
-  `CATALOG_ORIGIN`. See `docs/architecture.md`.
+- **No backend for the site's own logic.** Static hosting, client-side
+  fetches straight to `CATALOG_ORIGIN`. The one exception is the embedded
+  catalog API route (next bullet) — it isn't server-side rendering or a
+  proxy, it's the interim catalog itself. See `docs/architecture.md`.
 - **Suppression.** A missing stat field means "not enough data," never `0`.
   See `docs/suppression-and-states.md` — the spec itself calls this the rule
   most likely to be gotten wrong.
@@ -35,13 +37,17 @@ written out in `docs/`. Check there first.
   interim production catalog deployment (next bullet). See
   `docs/reverse-engineering.md`.
 - **We host the catalog ourselves — for now, not permanently.** No third
-  party publishes it yet, so we take `vendor/cardgame/catalog` and deploy
-  it as its own Vercel project, reusing its own `server.mjs` request
-  handler rather than reimplementing its 404/CORS/cache behavior as plain
-  static hosting. If the game's own team deploys a real catalog origin
-  later, flip `NEXT_PUBLIC_CATALOG_ORIGIN` to point at it and retire ours —
-  that's meant to be a one-line config change, so don't special-case
-  behavior on "the catalog happens to be ours." See
+  party publishes it yet, so we take `vendor/cardgame/catalog` (copied into
+  `catalog-api/`) and embed it as an API route (`pages/api/catalog.js` +
+  `next.config.ts` rewrites) *inside this same Next.js app and Vercel
+  project* — one deployment, not a second one — reusing its own
+  `server.mjs` request handler rather than reimplementing its
+  404/CORS/cache behavior as plain static hosting. If the game's own team
+  deploys a real catalog origin later, flip `NEXT_PUBLIC_CATALOG_ORIGIN` to
+  point at it, delete the embedded route, and retire ours — that's meant
+  to be a one-line config change (plus a cleanup, not a rewrite), so don't
+  special-case behavior on "the catalog happens to be ours" or "the
+  catalog happens to be this same deployment." See
   `docs/catalog-hosting.md`. Don't hardcode a guessed `CATALOG_ORIGIN`
   before our deploy exists — and specifically never use
   `https://cardgame-xi-orpin.vercel.app/`, which is the game's own web

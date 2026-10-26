@@ -5,8 +5,19 @@
 There is no third-party `CATALOG_ORIGIN` to point at. The owner has decided
 that, **for now, this project hosts the catalog itself** — a stand-in, not
 a permanent arrangement — by taking the catalog package out of the
-`vendor/cardgame` submodule and deploying it on Vercel, the same platform
-this site runs on. Once that's live, its URL *is* `CATALOG_ORIGIN`.
+`vendor/cardgame` submodule and embedding it directly in this Next.js app,
+as an API route (`pages/api/catalog.js`) in the same Vercel deployment as
+the card viewer itself, rather than as a separate project. Once this site
+is deployed, its own URL *is* `CATALOG_ORIGIN`.
+
+This supersedes an earlier version of this decision, where the catalog was
+deployed as a second, separate Vercel project
+(`catalog-deploy/`). That split added a deployment for no real benefit once
+it was clear the site and the catalog would always ship from the owner's
+same account on the same cadence anyway; collapsing them into one project
+is simpler to operate and is still just as swappable later (see
+"Migrating to an externally hosted catalog" below) — `CATALOG_ORIGIN`
+doesn't care how many Vercel projects sit behind it.
 
 This is explicitly a stopgap. If the game's own team (the people behind
 `vendor/cardgame`) later deploys the catalog themselves — e.g. the Railway
@@ -59,10 +70,10 @@ mode until a stats release exists. See
 
 ## Hosting approach: reuse `server.mjs`, don't reinvent it
 
-Serving `public/` as plain static files on Vercel would be the least work,
-but it quietly breaks the contract the whole site is built against: Vercel's
-default static hosting returns its own HTML 404 page for an unknown path
-(spec §4.4 requires a real JSON 404 body), doesn't add
+Serving `public/` as plain static files would be the least work, but it
+quietly breaks the contract the whole site is built against: plain static
+hosting returns its own HTML 404 page for an unknown path (spec §4.4
+requires a real JSON 404 body), doesn't add
 `Access-Control-Allow-Origin: *` or the exact `Cache-Control`/`ETag`
 behavior the spec requires, and doesn't restrict methods to
 `GET`/`HEAD`/`OPTIONS`.
@@ -70,21 +81,22 @@ behavior the spec requires, and doesn't restrict methods to
 `catalog/src/server.mjs` already implements all of that correctly and is
 already tested (`catalog/test/server.test.mjs` in the submodule covers real
 404s, CORS + preflight, `Cache-Control`, `ETag` → `304`, `HEAD`,
-traversal/dotfile refusal). **Reuse it as a Vercel serverless function
-instead of re-implementing any of that.** Its request handler is a plain
-`(req, res) => { ... }` Node callback — the same shape Vercel's Node runtime
-expects — it's just currently wrapped in `http.createServer(...)` for a
-long-running process (Railway's model, not Vercel's). Pull the callback back
-out rather than copying its logic:
+traversal/dotfile refusal). **Reuse it as a Next.js API route instead of
+re-implementing any of that.** Its request handler is a plain
+`(req, res) => { ... }` Node callback — the same shape Next.js's Pages API
+(Node) runtime calls directly — it's just currently wrapped in
+`http.createServer(...)` for a long-running process (Railway's model, not
+Vercel's serverless/Next.js model). Pull the callback back out rather than
+copying its logic:
 
 ```js
-// api/catalog.js — a single Vercel Node serverless function
-import { createCatalogServer } from '../vendor/cardgame/catalog/src/server.mjs';
+// pages/api/catalog.js — a Next.js Pages API route, Node runtime
+import { createCatalogServer } from '../../catalog-api/server.mjs';
 import path from 'node:path';
 
-const root = path.join(process.cwd(), 'vendor/cardgame/catalog/public');
+const root = path.join(process.cwd(), 'catalog-api', 'public');
 // createCatalogServer returns an http.Server; its request listener is the
-// same (req, res) handler Vercel's Node runtime calls directly.
+// same (req, res) handler Next.js's Node runtime calls directly.
 const handle = createCatalogServer(root).listeners('request')[0];
 
 export default function handler(req, res) {
@@ -92,40 +104,41 @@ export default function handler(req, res) {
 }
 ```
 
-with a `vercel.json` in this catalog deployment routing the real paths to
-it (Vercel serverless functions normally only match under `/api/*`, so the
-public-facing paths need an explicit rewrite — confirm the exact
-request-URL semantics through a rewrite when implementing this, Vercel's
-docs are the source of truth, not this doc):
+with a `rewrites()` entry in this app's own `next.config.ts` routing the
+real paths to it (Pages API routes normally only match under `/api/*`, so
+the public-facing paths need an explicit rewrite):
 
-```json
-{
-  "rewrites": [
-    { "source": "/data/v1/:path*", "destination": "/api/catalog" },
-    { "source": "/healthz", "destination": "/api/catalog" }
-  ]
-}
+```ts
+async rewrites() {
+  return [
+    { source: "/data/v1/:path*", destination: "/api/catalog" },
+    { source: "/healthz", destination: "/api/catalog" },
+  ];
+},
 ```
 
 This is "hosting them in the way provided" literally: the serving logic is
 the submodule's own, unmodified, just placed on a different platform than
-the Railway config (`catalog/railway.json`) it was originally prepared for.
+the Railway config (`catalog/railway.json`) it was originally prepared for,
+and now living inside this app's own deployment rather than a separate one.
 Don't fork or reimplement `server.mjs`'s behavior — import it.
 
 ### Where this lives
 
-Deploy `catalog/` as **its own Vercel project**, separate from the Next.js
-stats site's project, with Root Directory pointing at the submodule's
-`catalog/` path (mirroring the Root Directory note already prepared for
-Railway in `catalog/railway.json`/`catalog/README.md`). Keeping it as a
-separate project/deployment means:
+The catalog (`server.mjs` + its exported `public/`, copied into
+`catalog-api/` at this repo's root — see "What's actually being hosted"
+below) is embedded **inside this Next.js app's own Vercel project**, via
+`pages/api/catalog.js` and the `next.config.ts` rewrites above. It is not a
+separate project. This means:
 
-- The catalog's release cadence (new card data) is independent of the
-  site's own deploys.
-- `NEXT_PUBLIC_CATALOG_ORIGIN` in the site's Vercel project is just an env
-  var pointing at this other project's URL — exactly the same shape as if
-  a third party had published it, so nothing in `data-layer.md` or
-  `architecture.md` changes.
+- One deployment to manage instead of two; the catalog ships whenever the
+  site does.
+- `NEXT_PUBLIC_CATALOG_ORIGIN` in production is just this site's own URL —
+  still exactly the same shape as if a third party had published it from
+  somewhere else entirely, so nothing in `data-layer.md` or
+  `architecture.md` changes. The site's fetch code has no idea the origin
+  it's calling happens to be itself; see the guardrails below for why that
+  must stay true.
 
 ## Keeping it in sync
 
@@ -133,18 +146,20 @@ The submodule is pinned to a specific commit of the game repo. The exported
 `public/` directory only reflects that commit's `release-input.json` at
 export time. When the submodule is bumped (see
 [`reverse-engineering.md`](./reverse-engineering.md) for the update
-procedure), re-run the export and redeploy this catalog project —
-`public/` does not update itself:
+procedure), re-run the export, copy the result into `catalog-api/public/`,
+and redeploy this site — nothing updates itself:
 
 ```bash
 cd vendor/cardgame/catalog
 npm run export     # regenerates public/data/v1/... from release-input.json
 cd ../../..
-# commit the updated submodule pointer in this repo, then redeploy
-# the catalog Vercel project so it picks up the new public/ contents
+cp -r vendor/cardgame/catalog/public catalog-api/public
+cp vendor/cardgame/catalog/src/server.mjs catalog-api/server.mjs
+# commit the updated submodule pointer and catalog-api/, then redeploy this site
 ```
 
-Never hand-edit anything under `catalog/public/`; it's generated output.
+Never hand-edit anything under `catalog/public/` or `catalog-api/public/`;
+both are generated output.
 
 ## What doesn't change
 
@@ -171,10 +186,12 @@ NEXT_PUBLIC_CATALOG_ORIGIN=https://whatever-they-actually-deployed.example.com
 updated in the stats site's Vercel project settings, then redeployed. At
 that point:
 
-- Our catalog Vercel project (this doc's whole subject) becomes unnecessary
-  and should be decommissioned — don't keep running it as a silent fallback
-  or mirror; a stale second source of "the catalog" is exactly the kind of
-  inconsistency the suppression/provenance rules in
+- Our embedded catalog API (this doc's whole subject —
+  `catalog-api/`, `pages/api/catalog.js`, and the `rewrites()` entries in
+  `next.config.ts`) becomes unnecessary and should be deleted outright —
+  don't keep it running as a silent fallback or mirror; a stale second
+  source of "the catalog" is exactly the kind of inconsistency the
+  suppression/provenance rules in
   [`suppression-and-states.md`](./suppression-and-states.md) exist to catch,
   and there's no reason to invite it deliberately.
 - Their deployment becomes the actual driver of card data — names, costs,
@@ -194,18 +211,27 @@ that point:
 
 Because the eventual flip depends on the site never having quietly
 coupled itself to *our specific deployment* of the catalog, a few rules
-apply specifically because we're also the ones hosting it right now:
+apply specifically because we're also the ones hosting it right now —
+and embedding the catalog in the same app and the same deployment as the
+site, rather than a separate project, makes this easier to get wrong by
+accident, not less important to follow:
 
 - Never special-case behavior based on "the catalog origin happens to be
-  ours" — no same-origin shortcuts, no skipping the CORS/error-handling
-  code paths in [`data-layer.md`](./data-layer.md) because "we know our
-  own server doesn't need it." The site must work identically against our
-  deployment and a future unrelated one.
+  ours," and specifically never based on "the catalog origin happens to be
+  this same deployment" now that it literally is sometimes — no
+  same-origin shortcuts (no relative fetches, no skipping `fetch`'s
+  `mode`/`credentials` handling, no importing `catalog-api/` logic directly
+  from `lib/api/` instead of going over HTTP), no skipping the
+  CORS/error-handling code paths in [`data-layer.md`](./data-layer.md)
+  because "we know our own server doesn't need it." The site must work
+  identically against our deployment and a future unrelated one —
+  `getCatalogOrigin()` must stay the only thing that knows the origin, and
+  it must stay config, not a hardcoded same-origin assumption.
 - Never depend on anything from our deployment beyond what the spec and
-  `catalog/README.md` actually promise. Our `api/catalog.js` happens to be
-  `server.mjs` verbatim, so it has no extra behavior today — but don't add
-  any (a debug endpoint, a looser CORS policy, an extra header) that an
-  externally hosted catalog wouldn't also provide.
+  `catalog/README.md` actually promise. Our `pages/api/catalog.js` happens
+  to wrap `server.mjs` verbatim, so it has no extra behavior today — but
+  don't add any (a debug endpoint, a looser CORS policy, an extra header)
+  that an externally hosted catalog wouldn't also provide.
 - Keep `catalogVersion` plumbed through from the index file, never
   hardcoded anywhere in the site, so a real release's version simply
   replaces the candidate's without a code change.

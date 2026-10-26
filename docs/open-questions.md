@@ -9,15 +9,16 @@ revised — re-sync both when that happens.
 
 - [x] **What is the public origin for `CATALOG_ORIGIN`?** We're hosting it
       ourselves *for now*: taking the catalog package out of the
-      `vendor/cardgame` submodule and deploying it on its own Vercel
-      project, reusing its own server logic rather than reinventing it.
-      This is a stand-in, not permanent — if the game's own team deploys a
-      real catalog origin later, we flip `CATALOG_ORIGIN` to point at that
-      instead and retire ours. See
+      `vendor/cardgame` submodule and embedding it directly in this
+      Next.js app's own deployment (an API route, not a separate project),
+      reusing its own server logic rather than reinventing it. This is a
+      stand-in, not permanent — if the game's own team deploys a real
+      catalog origin later, we flip `CATALOG_ORIGIN` to point at that
+      instead and delete the embedded route. See
       [`catalog-hosting.md`](./catalog-hosting.md). (A Vercel URL given
       early on, `https://cardgame-xi-orpin.vercel.app/`, turned out to be
       the Godot game's HTML5 web export, not this — don't reuse it.) The
-      actual origin value exists once that deploy lands.
+      actual origin value exists once this site deploys.
 - [x] **Has a catalog release been published, and with which
       `catalogVersion` / `gameVersion`?** Being published now, as the
       candidate already sitting exported in the submodule:
@@ -62,6 +63,6 @@ revised — re-sync both when that happens.
       the sole `fetch()` call site and always passes `credentials: 'omit'`.
 
 All nine implemented and automated-tested (see [`testing.md`](./testing.md))
-as of the initial build. Still open: the three Vercel projects
+as of the initial build. Still open: the two Vercel projects
 ([`deployment.md`](./deployment.md)) aren't deployed yet — that's a manual
 step for the owner, not something this checklist item can self-certify.

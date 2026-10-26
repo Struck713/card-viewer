@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/data/v1/:path*", "destination": "/api/catalog" },
-    { "source": "/healthz", "destination": "/api/catalog" }
-  ]
-}

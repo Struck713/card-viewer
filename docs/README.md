@@ -26,8 +26,9 @@ spec's §7 non-goals apply to the submodule too: no scraping `data/cards/*.json`
 as a substitute for the catalog API).
 
 **One part of it is more than reference now:** `vendor/cardgame/catalog` is
-what we deploy as the catalog API itself, since no one else has published
-it — see [`catalog-hosting.md`](./catalog-hosting.md).
+what we embed, as a copy under `catalog-api/`, as the catalog API itself
+inside this app, since no one else has published it — see
+[`catalog-hosting.md`](./catalog-hosting.md).
 
 ## Document map
 
@@ -51,9 +52,9 @@ Confirmed directly against the submodule's `catalog/` package:
 - The **card catalog** API (`/data/v1/...`) is implemented, tested, and
   already exported as static files in the game repo
   (`catalog/public/data/v1/...`), but no one else had deployed it publicly.
-  **We now deploy it ourselves** — see
-  [`catalog-hosting.md`](./catalog-hosting.md). `release-input.json` there
-  is still a candidate (`0.1.0-candidate.1` / `unreleased`), not a
+  **We now host it ourselves, embedded in this app's own deployment** —
+  see [`catalog-hosting.md`](./catalog-hosting.md). `release-input.json`
+  there is still a candidate (`0.1.0-candidate.1` / `unreleased`), not a
   finalized release; hosting it doesn't change that.
 - The **stats** API (`/data/v1/stats/...`) does not exist anywhere in the
   repo — no server code, no routes, no fixtures beyond the ones in the spec
@@ -61,7 +62,7 @@ Confirmed directly against the submodule's `catalog/` package:
   the card-browser-only mode first; see
   [`suppression-and-states.md`](./suppression-and-states.md) for how the site
   must behave while this is true.
-- `CATALOG_ORIGIN` will be the URL of our own catalog Vercel deployment
-  once it's live (see [`catalog-hosting.md`](./catalog-hosting.md)), not a
-  third party's domain. Nothing in this stack should hardcode a guessed one
-  in the meantime.
+- `CATALOG_ORIGIN` will be this site's own URL once it's live (see
+  [`catalog-hosting.md`](./catalog-hosting.md)), not a third party's
+  domain. Nothing in this stack should hardcode a guessed one in the
+  meantime.

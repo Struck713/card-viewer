@@ -16,13 +16,14 @@ thing — the Godot game's HTML5 web export — from a separate Vercel project
 has nothing to do with this site and does not serve the catalog API; don't
 confuse the two when picking a project name or domain.
 
-**The catalog itself is now also hosted by this project, on a third Vercel
-project.** There's no external team publishing it — see
-[`catalog-hosting.md`](./catalog-hosting.md) for the full plan (reusing
-`vendor/cardgame/catalog/src/server.mjs` as a Vercel serverless function,
-not reinventing its 404/CORS/cache behavior as plain static hosting). Three
-separate things, three separate Vercel projects: the game's web export, the
-catalog API, and this stats site.
+**The catalog itself is now also hosted by this project, embedded in the
+same Vercel project as the site itself.** There's no external team
+publishing it — see [`catalog-hosting.md`](./catalog-hosting.md) for the
+full plan (reusing `vendor/cardgame/catalog/src/server.mjs` as a Next.js
+API route via `pages/api/catalog.js`, not reinventing its 404/CORS/cache
+behavior as plain static hosting). Two separate things, two separate
+Vercel projects: the game's web export, and this stats site — which now
+also serves the catalog API itself.
 
 ## Configuration
 
@@ -36,10 +37,12 @@ Set per environment:
   server) or wherever the §6 fixtures are served from.
 - **Preview/staging** — point at whatever origin the owner provides for
   pre-release testing, if any.
-- **Production** — the URL of the catalog Vercel project once
-  [`catalog-hosting.md`](./catalog-hosting.md) is deployed. This is an
-  interim value: if the game's own team later publishes a real catalog
-  origin, this env var is the only thing that changes to switch over — see
+- **Production** — this site's own URL, once deployed, since
+  [`catalog-hosting.md`](./catalog-hosting.md)'s embedded API route serves
+  the catalog from the same deployment. This is an interim value: if the
+  game's own team later publishes a real catalog origin, this env var is
+  the only thing that changes to switch over, and the embedded route gets
+  deleted — see
   [`catalog-hosting.md`](./catalog-hosting.md#migrating-to-an-externally-hosted-catalog-the-future-state).
   Not yet known by name until our deploy happens; do not hardcode a
   guessed domain in the meantime, including as a fallback default in code
@@ -65,9 +68,10 @@ changing one component, not redesigning the card table/detail layout.
 ## Pre-launch checklist (from spec §8 — resolved with the owner)
 
 1. ~~What is the public origin for `CATALOG_ORIGIN`?~~ We host it
-   ourselves now — see [`catalog-hosting.md`](./catalog-hosting.md). The
-   actual URL exists once that Vercel project is deployed; until then,
-   keep developing against local fixtures / the submodule's catalog server.
+   ourselves now, embedded in this same app — see
+   [`catalog-hosting.md`](./catalog-hosting.md). The actual URL exists once
+   this site is deployed; until then, keep developing against the embedded
+   route locally, local fixtures, or the submodule's catalog server.
 2. ~~Has a catalog release actually been published, and under which
    `catalogVersion`/`gameVersion`?~~ Being published now, as the candidate:
    `0.1.0-candidate.1`/`unreleased`, confirmed in `catalog/README.md` as
