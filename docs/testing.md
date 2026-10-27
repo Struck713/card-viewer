@@ -78,10 +78,9 @@ checked by hand before each release:
 
 ## Test tooling note
 
-The submodule's own catalog package (`vendor/cardgame/catalog`) tests itself
-with plain `node --test` and `curl`, no dependencies (see
-[`reverse-engineering.md`](./reverse-engineering.md)). That's a property of
-their package, not a constraint on this one — use whatever test runner fits
-the Next.js app (e.g. Vitest/Jest + Testing Library for components, Playwright
-if end-to-end coverage of the empty/error states is wanted). Don't couple
-this app's test setup to the submodule's.
+Use whatever test runner fits the Next.js app — currently Vitest + Testing
+Library for components, with MSW standing in for the catalog API. Tests
+never hit the real catalog origin: every fetch path is exercised against
+fixtures, so the suite stays deterministic and passes offline, and so the
+absent-stats and inconsistent-API cases (which no live origin produces on
+demand) are testable at all.

@@ -80,10 +80,10 @@ not a missing feature to request differently:
   the only "history" is older release ids, not a time series endpoint.
 - Realtime/per-match feeds, webhooks, writing anything back — the API is
   `GET`/`HEAD`/`OPTIONS` static JSON, full stop.
-- Treating `vendor/cardgame`'s raw `data/cards/*.json` (or any other file in
-  the submodule) as a data source for the live site. The catalog API is the
-  only supported surface; the raw files include internal effect data that is
-  deliberately not exported. See
-  [`reverse-engineering.md`](./reverse-engineering.md).
+- Treating the game repo's raw internal card/keyword JSON as a data source
+  for the live site, or committing any copy of the catalog into this repo.
+  The catalog API is the only supported surface; the raw files include
+  internal effect data that is deliberately not exported, and a committed
+  copy would be a second, silently stale source of card data.
 - Inventing endpoints (`/cards/:id`, `?color=`, `/search`). They don't exist
   and will 404 — all filtering is client-side over the full array.

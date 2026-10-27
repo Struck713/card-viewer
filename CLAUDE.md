@@ -17,39 +17,28 @@ written out in `docs/`. Check there first.
 
 ## Key things to not get wrong
 
-- **No backend for the site's own logic.** Static hosting, client-side
-  fetches straight to `CATALOG_ORIGIN`. The one exception is the embedded
-  catalog API route (next bullet) — it isn't server-side rendering or a
-  proxy, it's the interim catalog itself. See `docs/architecture.md`.
+- **No backend for the site's own logic, no exceptions.** Static hosting,
+  client-side fetches straight to `CATALOG_ORIGIN`. No API routes, no
+  proxying, no server-side rendering of catalog data. See
+  `docs/architecture.md`.
 - **Suppression.** A missing stat field means "not enough data," never `0`.
   See `docs/suppression-and-states.md` — the spec itself calls this the rule
   most likely to be gotten wrong.
 - **Stats may not exist yet.** The stats API (`/data/v1/stats/...`) is
-  contract-frozen but unimplemented as of this writing — confirmed by
-  checking the `vendor/cardgame` submodule directly, not assumed. The card
-  browser must work fully without it. See `docs/suppression-and-states.md`
-  and `docs/deployment.md`.
-- **`vendor/cardgame` is reference-only, with one exception.** It's a
-  submodule of the game's own repo, used to resolve ambiguity in the spec.
-  Nothing in the Next.js site (`app/`, `lib/`, `components/`) imports from
-  it, and its raw `data/cards/*.json` is never a data source for the site —
-  the catalog API is. The exception: `vendor/cardgame/catalog` is also our
-  interim production catalog deployment (next bullet). See
-  `docs/reverse-engineering.md`.
-- **We host the catalog ourselves — for now, not permanently.** No third
-  party publishes it yet, so we take `vendor/cardgame/catalog` (copied into
-  `catalog-api/`) and embed it as an API route (`pages/api/catalog.js` +
-  `next.config.ts` rewrites) *inside this same Next.js app and Vercel
-  project* — one deployment, not a second one — reusing its own
-  `server.mjs` request handler rather than reimplementing its
-  404/CORS/cache behavior as plain static hosting. If the game's own team
-  deploys a real catalog origin later, flip `NEXT_PUBLIC_CATALOG_ORIGIN` to
-  point at it, delete the embedded route, and retire ours — that's meant
-  to be a one-line config change (plus a cleanup, not a rewrite), so don't
-  special-case behavior on "the catalog happens to be ours" or "the
-  catalog happens to be this same deployment." See
-  `docs/catalog-hosting.md`. Don't hardcode a guessed `CATALOG_ORIGIN`
-  before our deploy exists — and specifically never use
+  contract-frozen but unpublished as of this writing — confirmed by
+  probing the live catalog origin, not assumed. The card browser must work
+  fully without it, and must keep working unchanged when stats appear. See
+  `docs/suppression-and-states.md` and `docs/deployment.md`.
+- **The catalog API is external and not ours.** It's published and
+  operated by the game's own team at
+  `https://cardgame-catalog-production.up.railway.app`, and it implements
+  the spec's §4.4 transport contract (verified). This project hosts only
+  the site. Never commit catalog data into this repo, never add a local
+  copy as a fallback or mirror, and never reach for a same-origin shortcut
+  (relative fetches, reading files off disk in `lib/api/`) — the origin is
+  opaque, swappable config, and `getCatalogOrigin()` is the only thing
+  that knows it. Don't hardcode it anywhere, including as a fallback
+  default, and specifically never use
   `https://cardgame-xi-orpin.vercel.app/`, which is the game's own web
   client, a different Vercel project entirely (confirmed: `/data/v1` 404s
   there). See `docs/deployment.md`.

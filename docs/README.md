@@ -10,25 +10,16 @@ These docs translate it into an implementation plan for a specific stack:
 - **Tailwind CSS**
 - Static/CSR data fetching against the catalog API — no custom backend
 
-## Why there's a submodule
+## Where the data comes from
 
-[`vendor/cardgame`](../vendor/cardgame) is a git submodule pointing at the
-game's own repository
-([`PlantMichael/cardgame`](https://github.com/PlantMichael/cardgame)). It is
-there for **reference only** — to resolve ambiguity in the spec, to look at
-the actual catalog exporter when something is underspecified, and to confirm
-what is and isn't implemented yet. It is not a dependency of the website and
-nothing in the website imports from it.
-
-See [`reverse-engineering.md`](./reverse-engineering.md) for what's actually
-in there, what it confirms, and the hard line on what not to use from it (the
-spec's §7 non-goals apply to the submodule too: no scraping `data/cards/*.json`
-as a substitute for the catalog API).
-
-**One part of it is more than reference now:** `vendor/cardgame/catalog` is
-what we embed, as a copy under `catalog-api/`, as the catalog API itself
-inside this app, since no one else has published it — see
-[`catalog-hosting.md`](./catalog-hosting.md).
+A single external API, hosted by the game's own team at
+`https://cardgame-catalog-production.up.railway.app` and reached only
+through `NEXT_PUBLIC_CATALOG_ORIGIN` — see
+[`deployment.md`](./deployment.md) for the origin's verified behavior and
+what's published there today. This repo contains no catalog data and no
+copy of the game's own repository; the API is the only supported surface
+for printed card data, per spec §7, including in local dev (use the
+fixtures for anything the real origin lacks).
 
 ## Document map
 
@@ -40,29 +31,23 @@ inside this app, since no one else has published it — see
 | [`pages-and-components.md`](./pages-and-components.md) | Route map and component breakdown against the spec's requirements |
 | [`suppression-and-states.md`](./suppression-and-states.md) | The suppression rule, empty states, error states — the parts most likely to be gotten wrong |
 | [`testing.md`](./testing.md) | Test strategy, required fixture-based tests |
-| [`reverse-engineering.md`](./reverse-engineering.md) | What the `vendor/cardgame` submodule is for and what it confirms |
-| [`catalog-hosting.md`](./catalog-hosting.md) | Why and how we self-host the catalog API out of the submodule *for now*, and how we flip to an externally hosted one later |
-| [`deployment.md`](./deployment.md) | Static hosting, configuration, build/release checklist |
+| [`deployment.md`](./deployment.md) | Static hosting, the catalog origin, configuration, build/release checklist |
 | [`open-questions.md`](./open-questions.md) | Owner questions and definition of done, carried over from the spec |
 
 ## Current status (as of this writing)
 
-Confirmed directly against the submodule's `catalog/` package:
+Confirmed by probing the live catalog origin, not assumed:
 
-- The **card catalog** API (`/data/v1/...`) is implemented, tested, and
-  already exported as static files in the game repo
-  (`catalog/public/data/v1/...`), but no one else had deployed it publicly.
-  **We now host it ourselves, embedded in this app's own deployment** —
-  see [`catalog-hosting.md`](./catalog-hosting.md). `release-input.json`
-  there is still a candidate (`0.1.0-candidate.1` / `unreleased`), not a
-  finalized release; hosting it doesn't change that.
-- The **stats** API (`/data/v1/stats/...`) does not exist anywhere in the
-  repo — no server code, no routes, no fixtures beyond the ones in the spec
-  itself. Hosting the catalog doesn't change this either. Build and ship
-  the card-browser-only mode first; see
-  [`suppression-and-states.md`](./suppression-and-states.md) for how the site
-  must behave while this is true.
-- `CATALOG_ORIGIN` will be this site's own URL once it's live (see
-  [`catalog-hosting.md`](./catalog-hosting.md)), not a third party's
-  domain. Nothing in this stack should hardcode a guessed one in the
-  meantime.
+- The **card catalog** API (`/data/v1/...`) is published and live, serving
+  release `0.1.0` (176 cards) with the spec's full §4.4 transport contract
+  — JSON 404s, immutable release caching, wildcard CORS with `ETag`
+  exposed. See [`deployment.md`](./deployment.md) for the evidence table.
+- The **stats** API (`/data/v1/stats/...`) is still not published —
+  `stats/latest.json` 404s at that origin. Ship the card-browser-only mode
+  first; see [`suppression-and-states.md`](./suppression-and-states.md) for
+  how the site must behave while this is true, and note that the site is
+  built to survive stats going from "absent" to "present" with no code
+  change.
+- `CATALOG_ORIGIN` is the game team's origin, reached only through
+  `getCatalogOrigin()`. Nothing in this stack hardcodes it, including as a
+  fallback default — that's what keeps it swappable if they move it.

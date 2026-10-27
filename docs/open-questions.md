@@ -7,24 +7,18 @@ revised — re-sync both when that happens.
 
 ## Questions for the owner before launch (spec §8)
 
-- [x] **What is the public origin for `CATALOG_ORIGIN`?** We're hosting it
-      ourselves *for now*: taking the catalog package out of the
-      `vendor/cardgame` submodule and embedding it directly in this
-      Next.js app's own deployment (an API route, not a separate project),
-      reusing its own server logic rather than reinventing it. This is a
-      stand-in, not permanent — if the game's own team deploys a real
-      catalog origin later, we flip `CATALOG_ORIGIN` to point at that
-      instead and delete the embedded route. See
-      [`catalog-hosting.md`](./catalog-hosting.md). (A Vercel URL given
-      early on, `https://cardgame-xi-orpin.vercel.app/`, turned out to be
-      the Godot game's HTML5 web export, not this — don't reuse it.) The
-      actual origin value exists once this site deploys.
+- [x] **What is the public origin for `CATALOG_ORIGIN`?**
+      `https://cardgame-catalog-production.up.railway.app`, published and
+      run by the game's own team. Verified live against the spec's §4.4
+      transport contract — see [`deployment.md`](./deployment.md). (A
+      Vercel URL given early on, `https://cardgame-xi-orpin.vercel.app/`,
+      turned out to be the Godot game's HTML5 web export, not this — don't
+      reuse it.) This resolves an earlier stopgap in which this project
+      served the catalog itself as static files; that arrangement is gone,
+      along with its docs.
 - [x] **Has a catalog release been published, and with which
-      `catalogVersion` / `gameVersion`?** Being published now, as the
-      candidate already sitting exported in the submodule:
-      `0.1.0-candidate.1` / `unreleased`. Still placeholder labels — see
-      [`catalog-hosting.md`](./catalog-hosting.md) for what happens when the
-      owner finalizes real ones.
+      `catalogVersion` / `gameVersion`?** Yes — `0.1.0` for both, 176
+      cards. No longer the `0.1.0-candidate.1` / `unreleased` placeholders.
 - [x] **Do card statistics exist yet?** No, confirmed directly by the owner.
       Build and ship card-browser-only mode first.
 - [x] **Is there an image source for card art?** No — confirmed by the
@@ -63,6 +57,7 @@ revised — re-sync both when that happens.
       the sole `fetch()` call site and always passes `credentials: 'omit'`.
 
 All nine implemented and automated-tested (see [`testing.md`](./testing.md))
-as of the initial build. Still open: the two Vercel projects
-([`deployment.md`](./deployment.md)) aren't deployed yet — that's a manual
-step for the owner, not something this checklist item can self-certify.
+as of the initial build. Still open: this site isn't deployed to Vercel yet
+([`deployment.md`](./deployment.md)) — that's a manual step for the owner,
+not something this checklist item can self-certify. The catalog origin it
+will point at is already live.

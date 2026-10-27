@@ -10,20 +10,53 @@ calls of its own at request time, it's all client-side fetches against
 `CATALOG_ORIGIN`. No Vercel-specific features (edge functions, ISR, server
 actions touching catalog data) are needed or should be reached for.
 
-Note that `vendor/cardgame`'s own root `vercel.json` deploys a *different*
-thing — the Godot game's HTML5 web export — from a separate Vercel project
-(confirmed live at `https://cardgame-xi-orpin.vercel.app/`). That deployment
-has nothing to do with this site and does not serve the catalog API; don't
-confuse the two when picking a project name or domain.
+Note that the game's own repo deploys a *different* thing from a separate
+Vercel project — the Godot game's HTML5 web export, live at
+`https://cardgame-xi-orpin.vercel.app/`. That deployment has nothing to do
+with this site and does not serve the catalog API (`/data/v1/...` 404s
+there); don't confuse the two when picking a project name or domain, and
+never use it as `CATALOG_ORIGIN`.
 
-**The catalog itself is now also hosted by this project, embedded in the
-same Vercel project as the site itself.** There's no external team
-publishing it — see [`catalog-hosting.md`](./catalog-hosting.md) for the
-full plan (reusing `vendor/cardgame/catalog/src/server.mjs` as a Next.js
-API route via `pages/api/catalog.js`, not reinventing its 404/CORS/cache
-behavior as plain static hosting). Two separate things, two separate
-Vercel projects: the game's web export, and this stats site — which now
-also serves the catalog API itself.
+**The catalog API is hosted by the game's own team**, separately from this
+site, at the origin below. This project hosts only the site — one Vercel
+project, no catalog files committed here, no API route.
+
+## The catalog origin
+
+```
+https://cardgame-catalog-production.up.railway.app
+```
+
+The game's team runs this; it is the real, external source of truth for
+card data, and this project does not deploy, mirror or re-export any part
+of it. Card data changes when they publish a release, which the site picks
+up through `latest.json` with no change here (see "Release-time behavior"
+below).
+
+Verified live against this origin, matching the spec's §4.4 transport
+contract:
+
+| Behavior | Observed |
+|---|---|
+| `GET /data/v1/latest.json` | `200`, `cache-control: no-cache` + `ETag` |
+| `GET /data/v1/releases/<v>/cards.json` | `200`, `cache-control: public, max-age=31536000, immutable` + `ETag` |
+| Unknown path | `404` with a JSON body (`{"error":"not found"}`) |
+| CORS | `access-control-allow-origin: *`, `access-control-expose-headers: ETag` |
+| Preflight (`OPTIONS`) | `204`, allows `GET, HEAD, OPTIONS` and `If-None-Match` |
+| `POST` | `405` |
+
+That means the site's conditional-request and release-caching design
+(see [`data-layer.md`](./data-layer.md)) is actually supported end to end
+rather than merely tolerated. Don't *depend* on anything beyond what the
+spec promises, though — the data layer already treats every non-2xx as a
+typed failure by status code alone and never parses an error body, and
+that's what keeps the origin swappable.
+
+Currently published there: catalog release `0.1.0` (`catalogVersion` and
+`gameVersion` both `0.1.0`), 176 cards. The stats half of the API is still
+not published — `/data/v1/stats/latest.json` 404s, checked against this
+same origin — so card-browser-only mode remains the operative state; see
+[`suppression-and-states.md`](./suppression-and-states.md).
 
 ## Configuration
 
@@ -33,26 +66,19 @@ NEXT_PUBLIC_CATALOG_ORIGIN=<origin, no trailing slash>
 
 Set per environment:
 
-- **Local dev** — `http://localhost:8080` (running the submodule's catalog
-  server) or wherever the §6 fixtures are served from.
-- **Preview/staging** — point at whatever origin the owner provides for
-  pre-release testing, if any.
-- **Production** — this site's own URL, once deployed, since
-  [`catalog-hosting.md`](./catalog-hosting.md)'s embedded API route serves
-  the catalog from the same deployment. This is an interim value: if the
-  game's own team later publishes a real catalog origin, this env var is
-  the only thing that changes to switch over, and the embedded route gets
-  deleted — see
-  [`catalog-hosting.md`](./catalog-hosting.md#migrating-to-an-externally-hosted-catalog-the-future-state).
-  Not yet known by name until our deploy happens; do not hardcode a
-  guessed domain in the meantime, including as a fallback default in code
-  — and specifically never use `https://cardgame-xi-orpin.vercel.app/`,
-  which was checked directly and found to serve the game client, not
-  `/data/v1/...` JSON (it 404s there). That domain is a different Vercel
-  project for a different
-  purpose, not the catalog. If the env var is unset, fail loudly in a
-  dev-only warning rather than silently falling back to a placeholder that
-  looks real.
+- **Local dev** — the real origin above (it's public and wildcard-CORS, so
+  there's nothing to run locally), or `http://localhost:8081` for the §6
+  fixtures via `npm run dev:fixtures` when exercising suppression and
+  empty-state paths the real origin has no data for.
+- **Preview/staging** — the same real origin, unless the owner provides a
+  pre-release one.
+- **Production** — the real origin above, set in the site's Vercel project
+  settings.
+
+Treat the origin as opaque, swappable config in all environments: it stays
+reachable only through `getCatalogOrigin()`, with no hardcoded fallback
+domain in code. If the env var is unset, fail loudly in a dev-only warning
+rather than silently falling back to a placeholder that looks real.
 
 ## Card art
 
@@ -67,17 +93,13 @@ changing one component, not redesigning the card table/detail layout.
 
 ## Pre-launch checklist (from spec §8 — resolved with the owner)
 
-1. ~~What is the public origin for `CATALOG_ORIGIN`?~~ We host it
-   ourselves now, embedded in this same app — see
-   [`catalog-hosting.md`](./catalog-hosting.md). The actual URL exists once
-   this site is deployed; until then, keep developing against the embedded
-   route locally, local fixtures, or the submodule's catalog server.
+1. ~~What is the public origin for `CATALOG_ORIGIN`?~~
+   `https://cardgame-catalog-production.up.railway.app` — published by the
+   game's own team, verified live (see "The catalog origin" above).
 2. ~~Has a catalog release actually been published, and under which
-   `catalogVersion`/`gameVersion`?~~ Being published now, as the candidate:
-   `0.1.0-candidate.1`/`unreleased`, confirmed in `catalog/README.md` as
-   placeholders. Hosting the candidate doesn't make the labels real — if
-   the owner finalizes real values later, re-export and redeploy (see
-   [`catalog-hosting.md`](./catalog-hosting.md#keeping-it-in-sync)).
+   `catalogVersion`/`gameVersion`?~~ Yes: `0.1.0` for both, 176 cards,
+   served from that origin. The earlier `0.1.0-candidate.1`/`unreleased`
+   placeholders are no longer what's published.
 3. ~~Do card/deck statistics exist yet?~~ No, confirmed directly by the
    owner. Plan the launch around card-browser-only.
 4. ~~Is there an image source for card art, separate from this API?~~ No —

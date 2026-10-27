@@ -2,16 +2,13 @@
 
 ## Stack
 
-- **Next.js** (App Router, latest stable, plus one Pages API route — see
-  below). No custom server, and no API routes for *proxying* catalog
-  requests — the catalog API already has CORS wide open
-  (`Access-Control-Allow-Origin: *`, no credentials), so the browser calls
-  it directly wherever it's actually hosted. The one API route that does
-  exist (`pages/api/catalog.js`) isn't a proxy in front of the catalog;
-  it *is* the catalog, for now — see "Embedded catalog API route" below and
-  [`catalog-hosting.md`](./catalog-hosting.md). Next's other jobs here are
-  routing, static asset bundling, and giving us a component model + Tailwind
-  integration.
+- **Next.js** (App Router, latest stable). No custom server, and no API
+  routes — not even for *proxying* catalog requests. The catalog API has
+  CORS wide open (`Access-Control-Allow-Origin: *`, no credentials), so the
+  browser calls it directly at `CATALOG_ORIGIN`, which is hosted by the
+  game's own team (see [`deployment.md`](./deployment.md)). Next's jobs
+  here are routing, static asset bundling, and giving us a component model
+  + Tailwind integration.
 - **TailwindCSS** for styling. No component library on top. The spec
   offered two options for the no-card-art problem (§1.4): a text/type-based
   design, or an image source from the owner. Resolved: the owner confirmed
@@ -25,18 +22,9 @@
   site itself should work as static files plus client-side fetches against
   `CATALOG_ORIGIN`. Don't build an API route that re-fetches the catalog
   server-side on the site's behalf (e.g. to hide `CATALOG_ORIGIN`, which
-  isn't a secret — it's public config) — the browser still talks straight
-  to `CATALOG_ORIGIN`, exactly as before.
-
-  The one exception, `pages/api/catalog.js`, isn't that kind of API route:
-  it doesn't proxy or re-fetch anything, has no business logic, and reads
-  no request data beyond what a static file server would. It's the
-  catalog's own `server.mjs` (see [`catalog-hosting.md`](./catalog-hosting.md)),
-  embedded here only because we're the ones hosting the catalog *for now*
-  and one Vercel project is simpler to run than two. It gets deleted
-  entirely once a real `CATALOG_ORIGIN` exists elsewhere — it is not a
-  server the site depends on in the architectural sense this bullet is
-  about.
+  isn't a secret — it's public config) — the browser talks straight to
+  `CATALOG_ORIGIN`. There is nothing server-side in the request path at
+  all, and no catalog data committed in this repo.
 
 ## Rendering strategy
 
@@ -99,29 +87,17 @@ components/
   empty-states/                # "not published yet", "schema mismatch", "inconsistent API"
   card-art/
     CardArtPlaceholder.tsx     # generic filler image/block used everywhere art would go
-pages/
-  api/
-    catalog.js                 # embedded catalog API route (see below) — Pages Router,
-                                # coexists with the App Router `app/` tree above
-catalog-api/
-  server.mjs                   # literal copy of vendor/cardgame/catalog/src/server.mjs
-  public/                      # literal copy of vendor/cardgame/catalog/public — generated, not hand-edited
+public/                        # static assets only — never catalog data
 docs/                          # this folder
-vendor/
-  cardgame/                    # git submodule — reference only, not imported by app code
 ```
 
-### Embedded catalog API route
-
-`pages/api/catalog.js` + a `rewrites()` block in `next.config.ts` expose
-`catalog-api/server.mjs`'s request handler at `/data/v1/*` and `/healthz`,
-inside this same Next.js app and the same Vercel deployment. This exists
-only because this project is temporarily the one hosting the catalog (see
-[`catalog-hosting.md`](./catalog-hosting.md)); it is not server-side
-rendering, not a proxy, and not a precedent for adding other API routes.
-The browser still fetches `CATALOG_ORIGIN` directly and has no idea the
-origin it's calling happens to be served by the same app — see that doc's
-guardrails for why that must stay true.
+Nothing under `public/` is or mirrors the catalog: the catalog lives at
+`CATALOG_ORIGIN`, reached over HTTP like any other external API. Don't
+reintroduce a local copy as a fallback or offline mirror — a stale second
+source of "the catalog" is exactly the kind of provenance inconsistency
+the rules in [`suppression-and-states.md`](./suppression-and-states.md)
+exist to prevent. Use the fixture server (below) when you need data the
+real origin doesn't have.
 
 ## Configuration
 
@@ -136,17 +112,15 @@ happen client-side, not in a Next.js server context). This is public
 configuration, not a secret — the API requires no key and serves the same
 data to everyone.
 
-Local development has two options (spec §2):
+The default for local development is the real catalog origin (see
+[`deployment.md`](./deployment.md)) — it's public, anonymous and
+wildcard-CORS, so `npm run dev` against it needs nothing else running.
 
-1. Run the real catalog server from the submodule:
-   ```
-   cd vendor/cardgame/catalog && npm start   # serves http://localhost:8080, Node >= 20, no deps
-   ```
-   then set `NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8080`.
-2. Serve the fixtures from spec §6 from any static file server and point
-   `NEXT_PUBLIC_CATALOG_ORIGIN` at that instead — useful for exercising the
-   suppression and empty-state paths, since the real catalog server has no
-   stats data at all right now.
+The one alternative worth keeping (spec §2): serve the spec §6 fixtures
+with `npm run dev:fixtures` and point
+`NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8081` at them instead. That's
+how you exercise the suppression and empty-state paths, since the real
+origin has no stats data at all right now.
 
 ## Why not more than this
 

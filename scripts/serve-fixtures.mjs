@@ -1,7 +1,7 @@
 // Tiny zero-dependency static server for test/fixtures/, serving them under
 // the same /data/v1/... paths the real catalog API uses. Lets local dev
 // exercise the suppression/slice-absence/stats-published paths that the
-// real catalog server (vendor/cardgame/catalog) has no data for at all.
+// real catalog origin has no data for at all.
 //
 // Usage: node scripts/serve-fixtures.mjs
 // Then: NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8081

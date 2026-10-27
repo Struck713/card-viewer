@@ -1,3 +1,0 @@
-[submodule "vendor/cardgame"]
-	path = vendor/cardgame
-	url = https://github.com/PlantMichael/cardgame.git

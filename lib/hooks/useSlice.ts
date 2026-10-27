@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { MatchType, TierGroup } from '../api/types';
 
@@ -35,8 +35,16 @@ function isMatchType(value: string | null): value is MatchType {
 export function useSlice(): UseSliceResult {
   const router = useRouter();
   const pathname = usePathname();
+  // useSearchParams() is typed as nullable (and is null during a static
+  // prerender of a route that isn't reading params), so the fallback has to
+  // stay — dropping it reintroduces a build failure on Vercel. Memoize it so
+  // the identity is stable across renders, which the useCallback deps below
+  // depend on; a bare `?? new URLSearchParams()` allocates every render.
   const rawSearchParams = useSearchParams();
-  const searchParams = rawSearchParams ?? new URLSearchParams();
+  const searchParams = useMemo(
+    () => rawSearchParams ?? new URLSearchParams(),
+    [rawSearchParams],
+  );
 
   const tierParam = searchParams.get('tier');
   const matchParam = searchParams.get('match');
