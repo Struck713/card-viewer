@@ -48,16 +48,30 @@ export function CardDetailPageClient({ id }: { id: string }) {
 
   const card = catalog.data.cardsById.get(id);
   if (!card) {
-    return <EmptyState title="Card not found" description="This card id doesn't exist in the current catalog release." />;
+    return (
+      <EmptyState
+        title="Card not found"
+        description="This card id doesn't exist in the current catalog release."
+      />
+    );
   }
 
-  const slice_ = stats.status === 'ok' ? slice.findSlice(stats.data.cardStats.slices) : undefined;
+  const slice_ =
+    stats.status === 'ok'
+      ? slice.findSlice(stats.data.cardStats.slices)
+      : undefined;
   const cardStat = slice_?.cards.find((entry) => entry.id === id);
-  const hasTransforms = card.isTransformForm || card.transformInto !== null || card.transformChoices.length > 0;
+  const hasTransforms =
+    card.isTransformForm ||
+    card.transformInto !== null ||
+    card.transformChoices.length > 0;
 
   return (
     <div className="space-y-6">
-      <Link href={`/cards?${slice.toQueryString()}`} className="text-sm text-neutral-600 hover:underline">
+      <Link
+        href={`/cards?${slice.toQueryString()}`}
+        className="text-sm text-neutral-600 hover:underline"
+      >
         ← Back to cards
       </Link>
       <ProvenanceBar />
@@ -70,15 +84,22 @@ export function CardDetailPageClient({ id }: { id: string }) {
             {card.transformInto && (
               <li>
                 Transforms into{' '}
-                <Link href={`/cards/${card.transformInto}?${slice.toQueryString()}`} className="underline">
-                  {catalog.data.cardsById.get(card.transformInto)?.name ?? card.transformInto}
+                <Link
+                  href={`/cards/${card.transformInto}?${slice.toQueryString()}`}
+                  className="underline"
+                >
+                  {catalog.data.cardsById.get(card.transformInto)?.name ??
+                    card.transformInto}
                 </Link>
               </li>
             )}
             {card.transformChoices.map((choiceId) => (
               <li key={choiceId}>
                 Can transform into{' '}
-                <Link href={`/cards/${choiceId}?${slice.toQueryString()}`} className="underline">
+                <Link
+                  href={`/cards/${choiceId}?${slice.toQueryString()}`}
+                  className="underline"
+                >
                   {catalog.data.cardsById.get(choiceId)?.name ?? choiceId}
                 </Link>
               </li>
@@ -92,7 +113,10 @@ export function CardDetailPageClient({ id }: { id: string }) {
           <StatsStatusBanner stats={stats} />
           {stats.status === 'ok' &&
             (cardStat ? (
-              <StatRows stat={cardStat} ratePrecision={stats.data.cardStats.method.ratePrecision} />
+              <StatRows
+                stat={cardStat}
+                ratePrecision={stats.data.cardStats.method.ratePrecision}
+              />
             ) : (
               <EmptyState
                 title="No published data for this slice"

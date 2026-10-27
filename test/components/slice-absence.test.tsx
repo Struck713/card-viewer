@@ -5,8 +5,12 @@ import type { CardRow } from '../../components/card-table/columns';
 import type { Card, CardsResponse } from '../../lib/api/types';
 import { readFixture } from '../helpers/fixtures';
 
-const cardsResponse = readFixture<CardsResponse>('data/v1/releases/0.0.0-dev/cards.json');
-const genStr001 = cardsResponse.cards.find((c) => c.id === 'gen_str_001') as Card;
+const cardsResponse = readFixture<CardsResponse>(
+  'data/v1/releases/0.0.0-dev/cards.json',
+);
+const genStr001 = cardsResponse.cards.find(
+  (c) => c.id === 'gen_str_001',
+) as Card;
 
 describe('slice-absence rendering (gen_str_001 fixture)', () => {
   it('a card present in the catalog but absent from the loaded slice shows "no data for this slice", not a 0/blank row', () => {

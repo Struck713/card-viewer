@@ -32,7 +32,10 @@ describe('caching', () => {
       http.get(url, ({ request }) => {
         calls += 1;
         if (calls === 1) {
-          return HttpResponse.json({ schemaVersion: 1, catalogVersion: 'x' }, { headers: { ETag: '"abc123"' } });
+          return HttpResponse.json(
+            { schemaVersion: 1, catalogVersion: 'x' },
+            { headers: { ETag: '"abc123"' } },
+          );
         }
         secondRequestHadEtag = request.headers.get('if-none-match');
         // A 304 body is empty; parseAndCacheIndex must never be reached for

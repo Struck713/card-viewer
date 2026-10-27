@@ -27,12 +27,17 @@ export function Abilities({ card, keywords }: AbilitiesProps) {
           {named.map((entry) => (
             <li key={entry.key} className="text-sm">
               <span className="font-medium">{entry.keyword!.name}</span>
-              <span className="text-neutral-600"> — {entry.keyword!.description}</span>
+              <span className="text-neutral-600">
+                {' '}
+                — {entry.keyword!.description}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      {hasUnresolved && <p className="mt-2 text-sm text-neutral-600">{card.description}</p>}
+      {hasUnresolved && (
+        <p className="mt-2 text-sm text-neutral-600">{card.description}</p>
+      )}
     </section>
   );
 }

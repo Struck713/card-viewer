@@ -4,19 +4,36 @@ import { useMemo, useState } from 'react';
 import { Filters, type FilterState } from '../../components/card-table/Filters';
 import { SearchBox } from '../../components/card-table/SearchBox';
 import { Table } from '../../components/card-table/Table';
-import { sortRows, type CardRow, type SortDirection, type SortKey } from '../../components/card-table/columns';
+import {
+  sortRows,
+  type CardRow,
+  type SortDirection,
+  type SortKey,
+} from '../../components/card-table/columns';
 import { ApiInconsistent } from '../../components/empty-states/ApiInconsistent';
 import { EmptyState } from '../../components/empty-states/EmptyState';
 import { SchemaMismatch } from '../../components/empty-states/SchemaMismatch';
 import { StatsStatusBanner } from '../../components/empty-states/StatsStatusBanner';
 import { ProvenanceBar } from '../../components/provenance/ProvenanceBar';
 import { SliceSelector } from '../../components/slice-selector/SliceSelector';
-import type { Card, CardStat, CardType, Color, Rarity } from '../../lib/api/types';
+import type {
+  Card,
+  CardStat,
+  CardType,
+  Color,
+  Rarity,
+} from '../../lib/api/types';
 import { useCatalog } from '../../lib/hooks/useCatalog';
 import { useSlice } from '../../lib/hooks/useSlice';
 import { useStats } from '../../lib/hooks/useStats';
 
-const DEFAULT_FILTERS: FilterState = { color: 'all', type: 'all', rarity: 'all', manaCost: 'all', tribe: 'all' };
+const DEFAULT_FILTERS: FilterState = {
+  color: 'all',
+  type: 'all',
+  rarity: 'all',
+  manaCost: 'all',
+  tribe: 'all',
+};
 
 function distinctSorted<T>(values: T[], compare?: (a: T, b: T) => number): T[] {
   return Array.from(new Set(values)).sort(compare);
@@ -46,11 +63,24 @@ export function CardsPageClient() {
 
   const options = useMemo(
     () => ({
-      colors: distinctSorted(collectibleCards.map((card) => card.color)) as Color[],
-      types: distinctSorted(collectibleCards.map((card) => card.type)) as CardType[],
-      rarities: distinctSorted(collectibleCards.map((card) => card.rarity)) as Rarity[],
-      manaCosts: distinctSorted(collectibleCards.map((card) => card.manaCost), compareNumbers),
-      tribes: distinctSorted(collectibleCards.map((card) => card.tribe).filter((tribe): tribe is string => tribe !== null)),
+      colors: distinctSorted(
+        collectibleCards.map((card) => card.color),
+      ) as Color[],
+      types: distinctSorted(
+        collectibleCards.map((card) => card.type),
+      ) as CardType[],
+      rarities: distinctSorted(
+        collectibleCards.map((card) => card.rarity),
+      ) as Rarity[],
+      manaCosts: distinctSorted(
+        collectibleCards.map((card) => card.manaCost),
+        compareNumbers,
+      ),
+      tribes: distinctSorted(
+        collectibleCards
+          .map((card) => card.tribe)
+          .filter((tribe): tribe is string => tribe !== null),
+      ),
     }),
     [collectibleCards],
   );
@@ -70,10 +100,16 @@ export function CardsPageClient() {
     return collectibleCards.filter((card) => {
       if (filters.color !== 'all' && card.color !== filters.color) return false;
       if (filters.type !== 'all' && card.type !== filters.type) return false;
-      if (filters.rarity !== 'all' && card.rarity !== filters.rarity) return false;
-      if (filters.manaCost !== 'all' && card.manaCost !== filters.manaCost) return false;
+      if (filters.rarity !== 'all' && card.rarity !== filters.rarity)
+        return false;
+      if (filters.manaCost !== 'all' && card.manaCost !== filters.manaCost)
+        return false;
       if (filters.tribe !== 'all' && card.tribe !== filters.tribe) return false;
-      if (query && !card.name.toLowerCase().includes(query) && !card.description.toLowerCase().includes(query)) {
+      if (
+        query &&
+        !card.name.toLowerCase().includes(query) &&
+        !card.description.toLowerCase().includes(query)
+      ) {
         return false;
       }
       return true;
@@ -84,7 +120,10 @@ export function CardsPageClient() {
     () => filtered.map((card) => ({ card, stat: cardStatById?.get(card.id) })),
     [filtered, cardStatById],
   );
-  const sortedRows = useMemo(() => sortRows(rows, sortKey, sortDirection), [rows, sortKey, sortDirection]);
+  const sortedRows = useMemo(
+    () => sortRows(rows, sortKey, sortDirection),
+    [rows, sortKey, sortDirection],
+  );
 
   const handleSort = (key: SortKey) => {
     if (key === sortKey) {
@@ -126,7 +165,11 @@ export function CardsPageClient() {
   return (
     <div className="space-y-4">
       <ProvenanceBar />
-      <SliceSelector tierGroup={slice.tierGroup} matchType={slice.matchType} onChange={slice.setSlice} />
+      <SliceSelector
+        tierGroup={slice.tierGroup}
+        matchType={slice.matchType}
+        onChange={slice.setSlice}
+      />
       <StatsStatusBanner stats={stats} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox value={search} onChange={setSearch} />
@@ -142,7 +185,11 @@ export function CardsPageClient() {
         sortDirection={sortDirection}
         onSort={handleSort}
         linkQuery={slice.toQueryString()}
-        ratePrecision={stats.status === 'ok' ? stats.data.cardStats.method.ratePrecision : undefined}
+        ratePrecision={
+          stats.status === 'ok'
+            ? stats.data.cardStats.method.ratePrecision
+            : undefined
+        }
       />
     </div>
   );

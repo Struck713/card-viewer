@@ -14,7 +14,11 @@ describe('schema version gate', () => {
     // No handlers registered for cardsUrl/keywordsUrl: if loadCatalog tried
     // to fetch them anyway, MSW's onUnhandledRequest: 'error' setup would
     // turn that into a network-error result and fail this exact match.
-    server.use(http.get(`${ORIGIN}/data/v1/latest.json`, () => HttpResponse.json(mismatch)));
+    server.use(
+      http.get(`${ORIGIN}/data/v1/latest.json`, () =>
+        HttpResponse.json(mismatch),
+      ),
+    );
 
     const result = await loadCatalog(ORIGIN);
 
@@ -24,7 +28,11 @@ describe('schema version gate', () => {
   it('stats/latest.json with schemaVersion !== 1 → schema-mismatch, no further parsing attempted', async () => {
     const base = readFixture<StatsIndex>('data/v1/stats/latest.json');
     const mismatch = { ...base, schemaVersion: 2 };
-    server.use(http.get(`${ORIGIN}/data/v1/stats/latest.json`, () => HttpResponse.json(mismatch)));
+    server.use(
+      http.get(`${ORIGIN}/data/v1/stats/latest.json`, () =>
+        HttpResponse.json(mismatch),
+      ),
+    );
 
     const result = await loadStats(ORIGIN);
 

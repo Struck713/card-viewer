@@ -6,13 +6,13 @@ on the data layer but not on later UI items.
 
 ## Routes
 
-| Route | Spec requirement | Works with no stats release? |
-|---|---|---|
-| `/cards` | §5.1 card table, §5.2 slice selector | Yes — table and filters work standalone; stats columns show the empty state |
-| `/cards/[id]` | §5.3 card detail | Yes — printed data + keywords always render; stats section shows the empty state |
-| `/factions` | §5.4 faction win rates | No — this page's entire content is `deck-stats.json`; when absent, the whole page is an empty state, not a broken page |
-| `/methodology` | §5.5 provenance / methodology page | Partially — catalog provenance (gameVersion, catalogVersion) always shows; the `method` block and stats provenance show the empty state when stats aren't published |
-| `/` | — | Redirects to `/cards`, or a minimal landing linking to it |
+| Route          | Spec requirement                     | Works with no stats release?                                                                                                                                        |
+| -------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/cards`       | §5.1 card table, §5.2 slice selector | Yes — table and filters work standalone; stats columns show the empty state                                                                                         |
+| `/cards/[id]`  | §5.3 card detail                     | Yes — printed data + keywords always render; stats section shows the empty state                                                                                    |
+| `/factions`    | §5.4 faction win rates               | No — this page's entire content is `deck-stats.json`; when absent, the whole page is an empty state, not a broken page                                              |
+| `/methodology` | §5.5 provenance / methodology page   | Partially — catalog provenance (gameVersion, catalogVersion) always shows; the `method` block and stats provenance show the empty state when stats aren't published |
+| `/`            | —                                    | Redirects to `/cards`, or a minimal landing linking to it                                                                                                           |
 
 Every route that renders a statistic must also render the provenance bar
 (§5.5) — don't treat `/methodology` as the only place provenance lives.
@@ -68,7 +68,7 @@ variant of the same component used in the table).
   `playRate`, `winRateWhenDrawn`, `winRateWhenKept`, `winRateWhenPlayed`),
   each with its `n.*` sample size next to it, and a visible "not enough
   data" row for every suppressed figure rather than omitting it — showing
-  the card still has that *category* of stat, just not enough data for it
+  the card still has that _category_ of stat, just not enough data for it
   yet, is more honest than silence.
 - Transform cards (`isTransformForm`, `transformInto`, `transformChoices`):
   link to the related card ids within the same release.

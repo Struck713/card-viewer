@@ -35,7 +35,12 @@ export function Filters({ value, onChange, options }: FiltersProps) {
         <select
           className="ml-1 rounded border border-neutral-300 px-1.5 py-1"
           value={value.color}
-          onChange={(event) => onChange({ ...value, color: (event.target.value || 'all') as Color | 'all' })}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              color: (event.target.value || 'all') as Color | 'all',
+            })
+          }
         >
           <option value="all">All</option>
           {options.colors.map((color) => (
@@ -50,7 +55,9 @@ export function Filters({ value, onChange, options }: FiltersProps) {
         <select
           className="ml-1 rounded border border-neutral-300 px-1.5 py-1"
           value={value.type}
-          onChange={(event) => onChange({ ...value, type: event.target.value as CardType | 'all' })}
+          onChange={(event) =>
+            onChange({ ...value, type: event.target.value as CardType | 'all' })
+          }
         >
           <option value="all">All</option>
           {options.types.map((type) => (
@@ -65,7 +72,9 @@ export function Filters({ value, onChange, options }: FiltersProps) {
         <select
           className="ml-1 rounded border border-neutral-300 px-1.5 py-1"
           value={value.rarity}
-          onChange={(event) => onChange({ ...value, rarity: event.target.value as Rarity | 'all' })}
+          onChange={(event) =>
+            onChange({ ...value, rarity: event.target.value as Rarity | 'all' })
+          }
         >
           <option value="all">All</option>
           {options.rarities.map((rarity) => (
@@ -80,7 +89,15 @@ export function Filters({ value, onChange, options }: FiltersProps) {
         <select
           className="ml-1 rounded border border-neutral-300 px-1.5 py-1"
           value={value.manaCost}
-          onChange={(event) => onChange({ ...value, manaCost: event.target.value === 'all' ? 'all' : Number(event.target.value) })}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              manaCost:
+                event.target.value === 'all'
+                  ? 'all'
+                  : Number(event.target.value),
+            })
+          }
         >
           <option value="all">All</option>
           {options.manaCosts.map((cost) => (
@@ -95,7 +112,9 @@ export function Filters({ value, onChange, options }: FiltersProps) {
         <select
           className="ml-1 rounded border border-neutral-300 px-1.5 py-1"
           value={value.tribe}
-          onChange={(event) => onChange({ ...value, tribe: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...value, tribe: event.target.value })
+          }
         >
           <option value="all">All</option>
           {options.tribes.map((tribe) => (

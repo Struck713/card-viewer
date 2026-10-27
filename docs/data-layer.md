@@ -57,7 +57,10 @@ Per spec §4.2:
 
 ```ts
 // lib/api/cache.ts (shape)
-export async function fetchReleaseFile<T>(url: string, releaseKey: string): Promise<T> {
+export async function fetchReleaseFile<T>(
+  url: string,
+  releaseKey: string,
+): Promise<T> {
   const cached = readCache<T>(releaseKey);
   if (cached) return cached;
   const body = await fetchJson<T>(url);
@@ -67,7 +70,10 @@ export async function fetchReleaseFile<T>(url: string, releaseKey: string): Prom
 
 export async function fetchIndexFile<T>(url: string): Promise<T> {
   const etag = readEtag(url);
-  const res = await fetch(url, etag ? { headers: { 'If-None-Match': etag } } : undefined);
+  const res = await fetch(
+    url,
+    etag ? { headers: { 'If-None-Match': etag } } : undefined,
+  );
   if (res.status === 304) return readIndexCache<T>(url)!;
   const body = await res.json();
   writeEtag(url, res.headers.get('ETag'));
@@ -85,13 +91,13 @@ page.
 Per spec §4.4, every non-2xx must be handled explicitly and distinctly. Don't
 collapse these into one generic "failed to load" state:
 
-| Situation | Response | Site behavior |
-|---|---|---|
-| `GET /data/v1/latest.json` → 404 | Catalog never deployed | Rare/unexpected at launch — if this happens, the whole site has nothing to show; display a clear "catalog not available" page, not a crash |
-| `GET /data/v1/stats/latest.json` → 404 | Stats not published yet (**the expected, common case today**) | Card browser works fully; show the "statistics have not been published yet" notice wherever stats would appear |
-| A release file named by an index returns 404 | API is internally inconsistent — a real bug, not an absence | Show a visible error, distinct from the "not published" empty state; this should never happen in a correctly operating API |
-| `schemaVersion` present but not `1` | This client is out of date relative to the contract | "This site needs updating" notice; do not attempt to render |
-| Network failure / non-JSON body | Transient or environment issue | Retry affordance; don't cache a failure |
+| Situation                                    | Response                                                      | Site behavior                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /data/v1/latest.json` → 404             | Catalog never deployed                                        | Rare/unexpected at launch — if this happens, the whole site has nothing to show; display a clear "catalog not available" page, not a crash |
+| `GET /data/v1/stats/latest.json` → 404       | Stats not published yet (**the expected, common case today**) | Card browser works fully; show the "statistics have not been published yet" notice wherever stats would appear                             |
+| A release file named by an index returns 404 | API is internally inconsistent — a real bug, not an absence   | Show a visible error, distinct from the "not published" empty state; this should never happen in a correctly operating API                 |
+| `schemaVersion` present but not `1`          | This client is out of date relative to the contract           | "This site needs updating" notice; do not attempt to render                                                                                |
+| Network failure / non-JSON body              | Transient or environment issue                                | Retry affordance; don't cache a failure                                                                                                    |
 
 Model this as a typed result rather than throwing strings, e.g.:
 

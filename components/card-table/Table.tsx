@@ -5,7 +5,13 @@ import { CardArtPlaceholder } from '../card-art/CardArtPlaceholder';
 import { formatRate } from '../../lib/format/rates';
 import { factionDisplay } from '../../lib/format/factions';
 import { isSuppressed, statValue } from '../../lib/format/suppression';
-import { STATIC_COLUMNS, STAT_COLUMNS, type CardRow, type SortDirection, type SortKey } from './columns';
+import {
+  STATIC_COLUMNS,
+  STAT_COLUMNS,
+  type CardRow,
+  type SortDirection,
+  type SortKey,
+} from './columns';
 
 interface TableProps {
   rows: CardRow[];
@@ -36,14 +42,28 @@ function SortButton({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-1 font-medium">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 font-medium"
+    >
       {label}
-      {active && <span aria-hidden="true">{direction === 'asc' ? '▲' : '▼'}</span>}
+      {active && (
+        <span aria-hidden="true">{direction === 'asc' ? '▲' : '▼'}</span>
+      )}
     </button>
   );
 }
 
-export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQuery, ratePrecision }: TableProps) {
+export function Table({
+  rows,
+  statsLoaded,
+  sortKey,
+  sortDirection,
+  onSort,
+  linkQuery,
+  ratePrecision,
+}: TableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -76,12 +96,18 @@ export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQ
           {rows.map(({ card, stat }) => {
             const faction = factionDisplay(card.color);
             return (
-              <tr key={card.id} className="border-b border-neutral-100 hover:bg-neutral-50">
+              <tr
+                key={card.id}
+                className="border-b border-neutral-100 hover:bg-neutral-50"
+              >
                 <td className="py-2 pr-3">
                   <CardArtPlaceholder label={card.name} />
                 </td>
                 <td className="py-2 pr-3">
-                  <Link href={`/cards/${card.id}?${linkQuery}`} className="font-medium hover:underline">
+                  <Link
+                    href={`/cards/${card.id}?${linkQuery}`}
+                    className="font-medium hover:underline"
+                  >
                     {card.name}
                   </Link>
                 </td>
@@ -91,7 +117,9 @@ export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQ
                       className={`inline-block h-2 w-2 rounded-full ${faction.swatchClassName}`}
                       aria-hidden="true"
                     />
-                    <span className={faction.textClassName}>{faction.label}</span>
+                    <span className={faction.textClassName}>
+                      {faction.label}
+                    </span>
                   </span>
                 </td>
                 <td className="py-2 pr-3">{card.type}</td>
@@ -100,13 +128,20 @@ export function Table({ rows, statsLoaded, sortKey, sortDirection, onSort, linkQ
                 {STAT_COLUMNS.map((col) => (
                   <td key={col.key} className="py-2 pr-3 whitespace-nowrap">
                     {!statsLoaded ? (
-                      <span className="text-neutral-500">Not published yet</span>
+                      <span className="text-neutral-500">
+                        Not published yet
+                      </span>
                     ) : !stat ? (
-                      <span className="text-neutral-500">No data for this slice</span>
+                      <span className="text-neutral-500">
+                        No data for this slice
+                      </span>
                     ) : isSuppressed(stat, col.key) ? (
                       <span className="text-neutral-500">Not enough data</span>
                     ) : (
-                      formatRate(statValue(stat, col.key) as number, ratePrecision)
+                      formatRate(
+                        statValue(stat, col.key) as number,
+                        ratePrecision,
+                      )
                     )}
                   </td>
                 ))}

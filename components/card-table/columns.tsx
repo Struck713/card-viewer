@@ -37,11 +37,17 @@ function isStatField(key: SortKey): key is StatField {
 // A stat-column sort must respect the suppression rule just like rendering
 // does: a row with no entry for this card sorts exactly like a suppressed
 // figure (last in both directions), never as 0.
-export function sortRows(rows: CardRow[], key: SortKey, direction: SortDirection): CardRow[] {
+export function sortRows(
+  rows: CardRow[],
+  key: SortKey,
+  direction: SortDirection,
+): CardRow[] {
   const sorted = [...rows];
   if (isStatField(key)) {
     const compare = compareStat(key, direction);
-    sorted.sort((a, b) => compare(a.stat ?? { id: a.card.id }, b.stat ?? { id: b.card.id }));
+    sorted.sort((a, b) =>
+      compare(a.stat ?? { id: a.card.id }, b.stat ?? { id: b.card.id }),
+    );
     return sorted;
   }
   sorted.sort((a, b) => {

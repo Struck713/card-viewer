@@ -3,7 +3,12 @@
 import { useContext, useEffect, useState } from 'react';
 import { loadCatalogRelease } from '../api/catalog';
 import { getCatalogOrigin } from '../api/config';
-import { CatalogContext, StatsContext, type CatalogState, type StatsState } from './context';
+import {
+  CatalogContext,
+  StatsContext,
+  type CatalogState,
+  type StatsState,
+} from './context';
 
 export interface UseStatsResult {
   stats: StatsState;
@@ -23,12 +28,21 @@ export function useStats(): UseStatsResult {
     throw new Error('useStats must be used within <AppProviders>');
   }
 
-  const statsCatalogVersion = stats.status === 'ok' ? stats.data.index.catalogVersion : null;
-  const currentCatalogVersion = catalog.status === 'ok' ? catalog.data.index.catalogVersion : null;
-  const mismatch = statsCatalogVersion !== null && currentCatalogVersion !== null && statsCatalogVersion !== currentCatalogVersion;
-  const needsOwnFetch = statsCatalogVersion !== null && statsCatalogVersion !== currentCatalogVersion;
+  const statsCatalogVersion =
+    stats.status === 'ok' ? stats.data.index.catalogVersion : null;
+  const currentCatalogVersion =
+    catalog.status === 'ok' ? catalog.data.index.catalogVersion : null;
+  const mismatch =
+    statsCatalogVersion !== null &&
+    currentCatalogVersion !== null &&
+    statsCatalogVersion !== currentCatalogVersion;
+  const needsOwnFetch =
+    statsCatalogVersion !== null &&
+    statsCatalogVersion !== currentCatalogVersion;
 
-  const [fetchedCatalog, setFetchedCatalog] = useState<CatalogState>({ status: 'loading' });
+  const [fetchedCatalog, setFetchedCatalog] = useState<CatalogState>({
+    status: 'loading',
+  });
 
   useEffect(() => {
     if (!needsOwnFetch || !statsCatalogVersion) return;

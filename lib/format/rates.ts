@@ -13,6 +13,8 @@ function decimalPlacesFromPrecision(ratePrecision: string): number {
 // assumption, since it can change release to release
 // (docs/data-contract.md's non-negotiable rule #6).
 export function formatRate(fraction: number, ratePrecision?: string): string {
-  const decimals = ratePrecision ? decimalPlacesFromPrecision(ratePrecision) : 1;
+  const decimals = ratePrecision
+    ? decimalPlacesFromPrecision(ratePrecision)
+    : 1;
   return `${(fraction * 100).toFixed(decimals)}%`;
 }

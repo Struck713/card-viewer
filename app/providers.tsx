@@ -4,16 +4,29 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { loadCatalog } from '../lib/api/catalog';
 import { getCatalogOrigin } from '../lib/api/config';
 import { loadStats } from '../lib/api/stats';
-import { CatalogContext, StatsContext, type CatalogState, type StatsState } from '../lib/hooks/context';
+import {
+  CatalogContext,
+  StatsContext,
+  type CatalogState,
+  type StatsState,
+} from '../lib/hooks/context';
 
 const origin = getCatalogOrigin();
-const missingOriginError: { status: 'network-error'; error: unknown } | null = origin
-  ? null
-  : { status: 'network-error', error: new Error('NEXT_PUBLIC_CATALOG_ORIGIN is not set') };
+const missingOriginError: { status: 'network-error'; error: unknown } | null =
+  origin
+    ? null
+    : {
+        status: 'network-error',
+        error: new Error('NEXT_PUBLIC_CATALOG_ORIGIN is not set'),
+      };
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  const [catalog, setCatalog] = useState<CatalogState>(missingOriginError ?? { status: 'loading' });
-  const [stats, setStats] = useState<StatsState>(missingOriginError ?? { status: 'loading' });
+  const [catalog, setCatalog] = useState<CatalogState>(
+    missingOriginError ?? { status: 'loading' },
+  );
+  const [stats, setStats] = useState<StatsState>(
+    missingOriginError ?? { status: 'loading' },
+  );
 
   useEffect(() => {
     if (!origin) return;

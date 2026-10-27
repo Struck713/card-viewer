@@ -25,7 +25,11 @@ export function StatsStatusBanner({ stats, compact }: StatsStatusBannerProps) {
       return <ApiInconsistent url={stats.url} />;
     case 'network-error':
       return (
-        <EmptyState tone="error" title="Couldn't load statistics" description="A network error occurred. Please try again." />
+        <EmptyState
+          tone="error"
+          title="Couldn't load statistics"
+          description="A network error occurred. Please try again."
+        />
       );
     default:
       return null;

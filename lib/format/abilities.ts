@@ -14,12 +14,21 @@ function baseKey(key: string): string {
   return key.replace(/_\d+$/, '');
 }
 
-export function resolveAbility(key: string, keywords: KeywordsResponse): ResolvedAbility {
+export function resolveAbility(
+  key: string,
+  keywords: KeywordsResponse,
+): ResolvedAbility {
   const direct = keywords.abilityKeywords[key];
-  const keywordId = direct !== undefined ? direct : keywords.abilityKeywords[baseKey(key)];
+  const keywordId =
+    direct !== undefined ? direct : keywords.abilityKeywords[baseKey(key)];
   if (!keywordId) {
     return { key, keyword: null };
   }
   const found = keywords.keywords.find((k) => k.id === keywordId);
-  return { key, keyword: found ? { name: found.name, description: found.description } : null };
+  return {
+    key,
+    keyword: found
+      ? { name: found.name, description: found.description }
+      : null,
+  };
 }

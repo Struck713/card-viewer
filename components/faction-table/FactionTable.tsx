@@ -8,7 +8,13 @@ function factionPairLabel(factions: DeckStat['factions']): string {
 
 // No deck-list affordance — deck-stats.json has no card list, deck code,
 // or hash (docs/pages-and-components.md). Just the comparison itself.
-export function FactionTable({ decks, ratePrecision }: { decks: DeckStat[]; ratePrecision?: string }) {
+export function FactionTable({
+  decks,
+  ratePrecision,
+}: {
+  decks: DeckStat[];
+  ratePrecision?: string;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[480px] border-collapse text-sm">
@@ -21,7 +27,10 @@ export function FactionTable({ decks, ratePrecision }: { decks: DeckStat[]; rate
         </thead>
         <tbody>
           {decks.map((deck) => (
-            <tr key={factionPairLabel(deck.factions)} className="border-b border-neutral-100">
+            <tr
+              key={factionPairLabel(deck.factions)}
+              className="border-b border-neutral-100"
+            >
               <td className="py-2 pr-4">
                 <span className="flex items-center gap-2">
                   {deck.factions.map((color) => {
@@ -32,7 +41,9 @@ export function FactionTable({ decks, ratePrecision }: { decks: DeckStat[]; rate
                           className={`inline-block h-2 w-2 rounded-full ${faction.swatchClassName}`}
                           aria-hidden="true"
                         />
-                        <span className={faction.textClassName}>{faction.label}</span>
+                        <span className={faction.textClassName}>
+                          {faction.label}
+                        </span>
                       </span>
                     );
                   })}
@@ -46,7 +57,11 @@ export function FactionTable({ decks, ratePrecision }: { decks: DeckStat[]; rate
                 )}
               </td>
               <td className="py-2 pr-4">
-                {deck.matches === undefined ? <span className="text-neutral-500">Not enough data</span> : deck.matches}
+                {deck.matches === undefined ? (
+                  <span className="text-neutral-500">Not enough data</span>
+                ) : (
+                  deck.matches
+                )}
               </td>
             </tr>
           ))}

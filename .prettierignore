@@ -1,0 +1,22 @@
+# Build output and generated files
+.next/
+tsconfig.tsbuildinfo
+next-env.d.ts
+package-lock.json
+
+# Copied verbatim from stats-website-spec.md §6 — the whole point of these
+# files is that they are byte-for-byte what the spec publishes, so that a
+# test failure means our code is wrong, not that a fixture drifted.
+test/fixtures/
+
+# The product brief, owned by the game's repo, not this one. Reformatting it
+# would make our copy diverge from theirs for no reason (see docs/README.md).
+stats-website-spec.md
+
+# Contains a block that `next dev` rewrites on its own.
+AGENTS.md
+
+# Vendored agent tooling, not this project's source.
+.claude/
+.superpowers/
+skills-lock.json

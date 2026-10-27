@@ -1,7 +1,8 @@
 // Mirrors stats-website-spec.md §3/§4 and docs/data-contract.md exactly.
 // Keep verbatim rather than re-deriving from JSON shapes at runtime.
 
-export type Color = 'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
+export type Color =
+  'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
 export type CardType = 'CREATURE' | 'STRATAGEM' | 'LOCATION';
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 export type TierGroup = 'low' | 'mid' | 'high' | 'legend';

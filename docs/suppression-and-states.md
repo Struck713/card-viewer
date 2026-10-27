@@ -12,6 +12,7 @@ card that qualifies for nothing in a slice is absent from `slice.cards`
 entirely.
 
 **Correct:**
+
 ```ts
 if ('winRateWhenPlayed' in card) {
   renderPercent(card.winRateWhenPlayed);
@@ -21,9 +22,10 @@ if ('winRateWhenPlayed' in card) {
 ```
 
 **Wrong — these are real bugs, not style choices:**
+
 ```ts
-renderPercent(card.winRateWhenPlayed || 0);        // false negative → fake 0%
-renderPercent(card.winRateWhenPlayed ?? 0);         // same bug, nullish form
+renderPercent(card.winRateWhenPlayed || 0); // false negative → fake 0%
+renderPercent(card.winRateWhenPlayed ?? 0); // same bug, nullish form
 sortRows((a, b) => (b.winRateWhenPlayed ?? 0) - (a.winRateWhenPlayed ?? 0)); // sorts suppressed cards to the bottom as if they're the worst performers
 ```
 
@@ -33,10 +35,17 @@ inlining the `in` check at each call site:
 ```ts
 // lib/format/suppression.ts
 export type StatField =
-  | 'drawRate' | 'keepRate' | 'playRate'
-  | 'winRateWhenDrawn' | 'winRateWhenKept' | 'winRateWhenPlayed';
+  | 'drawRate'
+  | 'keepRate'
+  | 'playRate'
+  | 'winRateWhenDrawn'
+  | 'winRateWhenKept'
+  | 'winRateWhenPlayed';
 
-export function statValue(card: CardStat, field: StatField): number | undefined {
+export function statValue(
+  card: CardStat,
+  field: StatField,
+): number | undefined {
   return card[field];
 }
 
@@ -56,14 +65,14 @@ cell.
 
 ## Empty and degraded states
 
-| Condition | What the user sees |
-|---|---|
-| No stats release exists yet (today's default state) | Full card browser (table, detail, filters, search, sort) with every stats-dependent column/section replaced by "statistics have not been published yet" — never hidden silently, never replaced with zeros |
-| Stats release exists, but a given slice has no data for a card | "No published data for this slice" on that card, distinct from a suppressed-but-present-elsewhere figure |
-| Switching the slice selector | Must not silently drop cards from view without saying why — if a card has no entry in the newly selected slice, show that explicitly rather than just omitting the row |
-| `stats/latest.json`'s `catalogVersion` differs from `catalog/latest.json`'s | Visible notice (e.g. in the provenance bar) that the statistics describe a different catalog release than the one being browsed |
-| A release file named by an index 404s | Visible error state — this is an API inconsistency bug, never silently treated the same as "not published" |
-| Unknown `schemaVersion` | Sitewide "this site needs updating" notice; don't attempt partial rendering |
+| Condition                                                                   | What the user sees                                                                                                                                                                                         |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No stats release exists yet (today's default state)                         | Full card browser (table, detail, filters, search, sort) with every stats-dependent column/section replaced by "statistics have not been published yet" — never hidden silently, never replaced with zeros |
+| Stats release exists, but a given slice has no data for a card              | "No published data for this slice" on that card, distinct from a suppressed-but-present-elsewhere figure                                                                                                   |
+| Switching the slice selector                                                | Must not silently drop cards from view without saying why — if a card has no entry in the newly selected slice, show that explicitly rather than just omitting the row                                     |
+| `stats/latest.json`'s `catalogVersion` differs from `catalog/latest.json`'s | Visible notice (e.g. in the provenance bar) that the statistics describe a different catalog release than the one being browsed                                                                            |
+| A release file named by an index 404s                                       | Visible error state — this is an API inconsistency bug, never silently treated the same as "not published"                                                                                                 |
+| Unknown `schemaVersion`                                                     | Sitewide "this site needs updating" notice; don't attempt partial rendering                                                                                                                                |
 
 ## Hard non-goals (spec §7)
 

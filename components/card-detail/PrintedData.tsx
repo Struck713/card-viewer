@@ -25,7 +25,8 @@ export function PrintedData({ card }: { card: Card }) {
           Cost {card.manaCost}
         </p>
         <p className="text-sm text-neutral-600">
-          Attack {formatAttackHealth(card.attack)} / Health {formatAttackHealth(card.health)}
+          Attack {formatAttackHealth(card.attack)} / Health{' '}
+          {formatAttackHealth(card.health)}
           {card.tribe && (
             <>
               {' · '}

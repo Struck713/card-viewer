@@ -1,4 +1,11 @@
-import type { Card, CardStatsResponse, CatalogIndex, DeckStatsResponse, KeywordsResponse, StatsIndex } from './types';
+import type {
+  Card,
+  CardStatsResponse,
+  CatalogIndex,
+  DeckStatsResponse,
+  KeywordsResponse,
+  StatsIndex,
+} from './types';
 
 export interface LoadedCatalog {
   index: CatalogIndex;

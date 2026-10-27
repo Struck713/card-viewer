@@ -21,7 +21,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col bg-white text-neutral-900">
         <AppProviders>
           <header className="border-b border-neutral-200">
@@ -29,20 +32,32 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/cards" className="font-semibold">
                 Card Statistics
               </Link>
-              <Link href="/cards" className="text-sm text-neutral-700 hover:underline">
+              <Link
+                href="/cards"
+                className="text-sm text-neutral-700 hover:underline"
+              >
                 Cards
               </Link>
-              <Link href="/factions" className="text-sm text-neutral-700 hover:underline">
+              <Link
+                href="/factions"
+                className="text-sm text-neutral-700 hover:underline"
+              >
                 Factions
               </Link>
-              <Link href="/methodology" className="text-sm text-neutral-700 hover:underline">
+              <Link
+                href="/methodology"
+                className="text-sm text-neutral-700 hover:underline"
+              >
                 Methodology
               </Link>
             </nav>
           </header>
-          <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+          <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+            {children}
+          </main>
           <footer className="border-t border-neutral-200 px-4 py-4 text-center text-xs text-neutral-500">
-            Unofficial, community-run card statistics. Not affiliated with the game&apos;s developers.
+            Unofficial, community-run card statistics. Not affiliated with the
+            game&apos;s developers.
           </footer>
         </AppProviders>
       </body>

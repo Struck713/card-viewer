@@ -27,9 +27,16 @@ export function FactionsPageClient() {
   return (
     <div className="space-y-4">
       <ProvenanceBar />
-      <SliceSelector tierGroup={slice.tierGroup} matchType={slice.matchType} onChange={slice.setSlice} />
+      <SliceSelector
+        tierGroup={slice.tierGroup}
+        matchType={slice.matchType}
+        onChange={slice.setSlice}
+      />
       {found ? (
-        <FactionTable decks={found.decks} ratePrecision={stats.data.deckStats.method.ratePrecision} />
+        <FactionTable
+          decks={found.decks}
+          ratePrecision={stats.data.deckStats.method.ratePrecision}
+        />
       ) : (
         <EmptyState
           title="No published data for this slice"

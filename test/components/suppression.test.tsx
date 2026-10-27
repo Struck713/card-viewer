@@ -4,8 +4,12 @@ import { StatRows } from '../../components/card-detail/StatRows';
 import type { CardStatsResponse } from '../../lib/api/types';
 import { readFixture } from '../helpers/fixtures';
 
-const cardStats = readFixture<CardStatsResponse>('data/v1/stats/releases/stats-0.0.0-dev/card-stats.json');
-const slice = cardStats.slices.find((s) => s.tierGroup === 'mid' && s.matchType === 'ranked')!;
+const cardStats = readFixture<CardStatsResponse>(
+  'data/v1/stats/releases/stats-0.0.0-dev/card-stats.json',
+);
+const slice = cardStats.slices.find(
+  (s) => s.tierGroup === 'mid' && s.matchType === 'ranked',
+)!;
 const t019 = slice.cards.find((c) => c.id === 't_019')!;
 
 describe('suppression rendering (t_019 fixture)', () => {

@@ -12,7 +12,9 @@ export function ProvenanceBar() {
   const { stats, statsCatalog, catalogVersionMismatch } = useStats();
 
   if (catalog.status === 'loading') {
-    return <p className="px-3 py-2 text-xs text-neutral-500">Loading provenance…</p>;
+    return (
+      <p className="px-3 py-2 text-xs text-neutral-500">Loading provenance…</p>
+    );
   }
   if (catalog.status !== 'ok') {
     // The page's own empty/error state already explains why there's
@@ -25,32 +27,45 @@ export function ProvenanceBar() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
       <span>
-        Game version: <strong className="font-medium text-neutral-800">{gameVersion}</strong>
+        Game version:{' '}
+        <strong className="font-medium text-neutral-800">{gameVersion}</strong>
       </span>
       <span>
-        Catalog version: <strong className="font-medium text-neutral-800">{catalogVersion}</strong>
+        Catalog version:{' '}
+        <strong className="font-medium text-neutral-800">
+          {catalogVersion}
+        </strong>
       </span>
       {stats.status === 'ok' && (
         <>
           <span>
-            Stats release: <strong className="font-medium text-neutral-800">{stats.data.index.releaseId}</strong>
+            Stats release:{' '}
+            <strong className="font-medium text-neutral-800">
+              {stats.data.index.releaseId}
+            </strong>
           </span>
           <span>
-            Generated: <strong className="font-medium text-neutral-800">{stats.data.cardStats.generatedOn}</strong>
+            Generated:{' '}
+            <strong className="font-medium text-neutral-800">
+              {stats.data.cardStats.generatedOn}
+            </strong>
           </span>
         </>
       )}
       {catalogVersionMismatch && stats.status === 'ok' && (
         <span className="font-medium text-amber-700">
-          Statistics describe catalog {stats.data.index.catalogVersion}, not the {catalogVersion} release being
-          browsed.
+          Statistics describe catalog {stats.data.index.catalogVersion}, not the{' '}
+          {catalogVersion} release being browsed.
         </span>
       )}
-      {catalogVersionMismatch && statsCatalog.status !== 'ok' && statsCatalog.status !== 'loading' && (
-        <span className="font-medium text-red-700">
-          Could not verify the catalog release the statistics describe — its own data could not be loaded.
-        </span>
-      )}
+      {catalogVersionMismatch &&
+        statsCatalog.status !== 'ok' &&
+        statsCatalog.status !== 'loading' && (
+          <span className="font-medium text-red-700">
+            Could not verify the catalog release the statistics describe — its
+            own data could not be loaded.
+          </span>
+        )}
     </div>
   );
 }

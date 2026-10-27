@@ -17,9 +17,13 @@ export function MethodologyPageClient() {
       <section>
         <h1 className="text-lg font-semibold">Methodology</h1>
         <div className="mt-3">
-          {stats.status === 'loading' && <p className="text-sm text-neutral-500">Loading…</p>}
+          {stats.status === 'loading' && (
+            <p className="text-sm text-neutral-500">Loading…</p>
+          )}
           <StatsStatusBanner stats={stats} />
-          {stats.status === 'ok' && <MethodologyPanel method={stats.data.cardStats.method} />}
+          {stats.status === 'ok' && (
+            <MethodologyPanel method={stats.data.cardStats.method} />
+          )}
         </div>
       </section>
     </div>

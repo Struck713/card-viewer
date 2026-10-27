@@ -3,12 +3,12 @@
 ## Stack
 
 - **Next.js** (App Router, latest stable). No custom server, and no API
-  routes — not even for *proxying* catalog requests. The catalog API has
+  routes — not even for _proxying_ catalog requests. The catalog API has
   CORS wide open (`Access-Control-Allow-Origin: *`, no credentials), so the
   browser calls it directly at `CATALOG_ORIGIN`, which is hosted by the
-  game's own team (see [`deployment.md`](./deployment.md)). Next's jobs
-  here are routing, static asset bundling, and giving us a component model
-  + Tailwind integration.
+  game's own team (see [`deployment.md`](./deployment.md)). Next's jobs here
+  are routing, static asset bundling, and giving us a component model plus
+  Tailwind integration.
 - **TailwindCSS** for styling. No component library on top. The spec
   offered two options for the no-card-art problem (§1.4): a text/type-based
   design, or an image source from the owner. Resolved: the owner confirmed

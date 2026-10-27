@@ -21,7 +21,9 @@ export interface UseSliceResult {
   // the current slice/release selection survives navigation instead of
   // resetting to the default.
   toQueryString: () => string;
-  findSlice: <T extends { tierGroup: TierGroup; matchType: MatchType }>(slices: T[]) => T | undefined;
+  findSlice: <T extends { tierGroup: TierGroup; matchType: MatchType }>(
+    slices: T[],
+  ) => T | undefined;
 }
 
 function isTierGroup(value: string | null): value is TierGroup {
@@ -71,10 +73,22 @@ export function useSlice(): UseSliceResult {
   }, [tierGroup, matchType, releaseId]);
 
   const findSlice = useCallback(
-    <T extends { tierGroup: TierGroup; matchType: MatchType }>(slices: T[]): T | undefined =>
-      slices.find((slice) => slice.tierGroup === tierGroup && slice.matchType === matchType),
+    <T extends { tierGroup: TierGroup; matchType: MatchType }>(
+      slices: T[],
+    ): T | undefined =>
+      slices.find(
+        (slice) =>
+          slice.tierGroup === tierGroup && slice.matchType === matchType,
+      ),
     [tierGroup, matchType],
   );
 
-  return { tierGroup, matchType, releaseId, setSlice, toQueryString, findSlice };
+  return {
+    tierGroup,
+    matchType,
+    releaseId,
+    setSlice,
+    toQueryString,
+    findSlice,
+  };
 }

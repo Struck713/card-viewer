@@ -26,7 +26,12 @@ function safeSet(key: string, value: string): void {
   }
 }
 
-async function parseAndCacheIndex<T>(res: Response, url: string, etagKey: string, bodyKey: string): Promise<T> {
+async function parseAndCacheIndex<T>(
+  res: Response,
+  url: string,
+  etagKey: string,
+  bodyKey: string,
+): Promise<T> {
   let body: T;
   try {
     body = (await res.json()) as T;
@@ -43,7 +48,10 @@ export async function fetchIndexFile<T>(url: string): Promise<T> {
   const etagKey = ETAG_PREFIX + url;
   const bodyKey = INDEX_BODY_PREFIX + url;
   const etag = safeGet(etagKey);
-  const res = await fetchResponse(url, etag ? { 'If-None-Match': etag } : undefined);
+  const res = await fetchResponse(
+    url,
+    etag ? { 'If-None-Match': etag } : undefined,
+  );
 
   if (res.status === 304) {
     const cached = safeGet(bodyKey);
@@ -64,7 +72,10 @@ export async function fetchIndexFile<T>(url: string): Promise<T> {
   return parseAndCacheIndex<T>(res, url, etagKey, bodyKey);
 }
 
-export async function fetchReleaseFile<T>(url: string, releaseKey: string): Promise<T> {
+export async function fetchReleaseFile<T>(
+  url: string,
+  releaseKey: string,
+): Promise<T> {
   const key = `${RELEASE_PREFIX}${releaseKey}:${url}`;
   const cached = safeGet(key);
   if (cached) {

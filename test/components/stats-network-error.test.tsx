@@ -11,7 +11,11 @@ const ORIGIN = 'http://test.local'; // matches NEXT_PUBLIC_CATALOG_ORIGIN set in
 describe('stats network error on /cards', () => {
   it('a genuine stats API failure shows a visible error, never silently renders as "not published"', async () => {
     registerCatalogHandlers(ORIGIN);
-    server.use(http.get(`${ORIGIN}/data/v1/stats/latest.json`, () => HttpResponse.error()));
+    server.use(
+      http.get(`${ORIGIN}/data/v1/stats/latest.json`, () =>
+        HttpResponse.error(),
+      ),
+    );
 
     render(
       <AppProviders>
@@ -20,7 +24,11 @@ describe('stats network error on /cards', () => {
     );
 
     await screen.findByText('Garbage Addict');
-    expect(await screen.findByText("Couldn't load statistics")).toBeInTheDocument();
-    expect(screen.queryByText('Statistics have not been published yet')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't load statistics"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Statistics have not been published yet'),
+    ).not.toBeInTheDocument();
   });
 });

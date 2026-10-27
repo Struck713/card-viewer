@@ -5,7 +5,9 @@ import type { CardStatsResponse, DeckStatsResponse, StatsIndex } from './types';
 export async function loadStats(origin: string): Promise<StatsResult> {
   let index: StatsIndex;
   try {
-    index = await fetchIndexFile<StatsIndex>(`${origin}/data/v1/stats/latest.json`);
+    index = await fetchIndexFile<StatsIndex>(
+      `${origin}/data/v1/stats/latest.json`,
+    );
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) {
       // The expected, common case today: stats aren't published yet.

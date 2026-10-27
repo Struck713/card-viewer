@@ -1,6 +1,11 @@
 import { fetchIndexFile, fetchReleaseFile } from './cache';
 import { HttpError, type CatalogResult } from './errors';
-import type { Card, CardsResponse, CatalogIndex, KeywordsResponse } from './types';
+import type {
+  Card,
+  CardsResponse,
+  CatalogIndex,
+  KeywordsResponse,
+} from './types';
 
 function indexCardsById(cards: Card[]): Map<string, Card> {
   const map = new Map<string, Card>();
@@ -57,7 +62,12 @@ async function loadCatalogFiles(
   };
   return {
     status: 'ok',
-    data: { index, cards: cardsRes.cards, cardsById: indexCardsById(cardsRes.cards), keywords: keywordsRes },
+    data: {
+      index,
+      cards: cardsRes.cards,
+      cardsById: indexCardsById(cardsRes.cards),
+      keywords: keywordsRes,
+    },
   };
 }
 
@@ -74,14 +84,22 @@ export async function loadCatalog(origin: string): Promise<CatalogResult> {
   if (index.schemaVersion !== 1) {
     return { status: 'schema-mismatch', got: index.schemaVersion };
   }
-  return loadCatalogFiles(origin, index.catalogVersion, index.cardsUrl, index.keywordsUrl);
+  return loadCatalogFiles(
+    origin,
+    index.catalogVersion,
+    index.cardsUrl,
+    index.keywordsUrl,
+  );
 }
 
 // Loads a specific catalog release by version, bypassing latest.json.
 // Needed because the stats index can name a catalogVersion different from
 // whatever catalog/latest.json currently points at — the spec requires
 // loading THAT release, not "latest".
-export async function loadCatalogRelease(origin: string, catalogVersion: string): Promise<CatalogResult> {
+export async function loadCatalogRelease(
+  origin: string,
+  catalogVersion: string,
+): Promise<CatalogResult> {
   return loadCatalogFiles(
     origin,
     catalogVersion,

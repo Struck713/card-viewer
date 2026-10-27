@@ -10,7 +10,7 @@ calls of its own at request time, it's all client-side fetches against
 `CATALOG_ORIGIN`. No Vercel-specific features (edge functions, ISR, server
 actions touching catalog data) are needed or should be reached for.
 
-Note that the game's own repo deploys a *different* thing from a separate
+Note that the game's own repo deploys a _different_ thing from a separate
 Vercel project — the Godot game's HTML5 web export, live at
 `https://cardgame-xi-orpin.vercel.app/`. That deployment has nothing to do
 with this site and does not serve the catalog API (`/data/v1/...` 404s
@@ -36,18 +36,18 @@ below).
 Verified live against this origin, matching the spec's §4.4 transport
 contract:
 
-| Behavior | Observed |
-|---|---|
-| `GET /data/v1/latest.json` | `200`, `cache-control: no-cache` + `ETag` |
-| `GET /data/v1/releases/<v>/cards.json` | `200`, `cache-control: public, max-age=31536000, immutable` + `ETag` |
-| Unknown path | `404` with a JSON body (`{"error":"not found"}`) |
-| CORS | `access-control-allow-origin: *`, `access-control-expose-headers: ETag` |
-| Preflight (`OPTIONS`) | `204`, allows `GET, HEAD, OPTIONS` and `If-None-Match` |
-| `POST` | `405` |
+| Behavior                               | Observed                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /data/v1/latest.json`             | `200`, `cache-control: no-cache` + `ETag`                               |
+| `GET /data/v1/releases/<v>/cards.json` | `200`, `cache-control: public, max-age=31536000, immutable` + `ETag`    |
+| Unknown path                           | `404` with a JSON body (`{"error":"not found"}`)                        |
+| CORS                                   | `access-control-allow-origin: *`, `access-control-expose-headers: ETag` |
+| Preflight (`OPTIONS`)                  | `204`, allows `GET, HEAD, OPTIONS` and `If-None-Match`                  |
+| `POST`                                 | `405`                                                                   |
 
 That means the site's conditional-request and release-caching design
 (see [`data-layer.md`](./data-layer.md)) is actually supported end to end
-rather than merely tolerated. Don't *depend* on anything beyond what the
+rather than merely tolerated. Don't _depend_ on anything beyond what the
 spec promises, though — the data layer already treats every non-2xx as a
 typed failure by status code alone and never parses an error body, and
 that's what keeps the origin swappable.
@@ -118,6 +118,6 @@ alongside the definition-of-done checklist.
   mechanism that makes launching before stats exist safe, not a temporary
   scaffold to remove later.
 - Because release files are cached essentially forever by release id (spec
-  §4.2), a new catalog or stats release must be picked up via the *index*
+  §4.2), a new catalog or stats release must be picked up via the _index_
   files changing (`latest.json`'s `cardsUrl`/`cardStatsUrl` pointing at a
   new version), not by invalidating any site-side cache manually.

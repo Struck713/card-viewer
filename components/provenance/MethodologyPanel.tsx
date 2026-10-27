@@ -20,7 +20,9 @@ export function MethodologyPanel({ method }: MethodologyPanelProps) {
           <dd className="text-sm">{method.minSample}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-neutral-500">Per-account cap</dt>
+          <dt className="text-xs uppercase text-neutral-500">
+            Per-account cap
+          </dt>
           <dd className="text-sm">{method.perAccountCap}</dd>
         </div>
         <div>
@@ -32,16 +34,20 @@ export function MethodologyPanel({ method }: MethodologyPanelProps) {
           <dd className="text-sm">{method.ratePrecision}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-neutral-500">Sample rounding</dt>
+          <dt className="text-xs uppercase text-neutral-500">
+            Sample rounding
+          </dt>
           <dd className="text-sm">{method.sampleRounding}</dd>
         </div>
       </dl>
       <p className="text-sm text-neutral-600">
-        Only matches meeting the minimum sample above are counted. To stop any one player or matchup
-        from skewing a figure, each account contributes at most {method.perAccountCap} matches toward a
-        single card&apos;s statistics, and at most {method.pairCap} matches toward a single faction pairing.
-        A card or pairing that still doesn&apos;t clear the minimum sample after capping is shown as
-        &quot;not enough data&quot; rather than a potentially misleading rate.
+        Only matches meeting the minimum sample above are counted. To stop any
+        one player or matchup from skewing a figure, each account contributes at
+        most {method.perAccountCap} matches toward a single card&apos;s
+        statistics, and at most {method.pairCap} matches toward a single faction
+        pairing. A card or pairing that still doesn&apos;t clear the minimum
+        sample after capping is shown as &quot;not enough data&quot; rather than
+        a potentially misleading rate.
       </p>
     </div>
   );

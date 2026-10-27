@@ -3,7 +3,9 @@ import { resolveAbility } from '../../lib/format/abilities';
 import type { KeywordsResponse } from '../../lib/api/types';
 import { readFixture } from '../helpers/fixtures';
 
-const keywords = readFixture<KeywordsResponse>('data/v1/releases/0.0.0-dev/keywords.json');
+const keywords = readFixture<KeywordsResponse>(
+  'data/v1/releases/0.0.0-dev/keywords.json',
+);
 
 describe('resolveAbility', () => {
   it('resolves a known ability key to its keyword name and description', () => {
@@ -24,10 +26,20 @@ describe('resolveAbility', () => {
   it('resolves a parameterised key through its base', () => {
     const paramKeywords: KeywordsResponse = {
       ...keywords,
-      keywords: [...keywords.keywords, { id: 'shielded', name: 'Shielded', description: 'Prevents the next instance of damage.' }],
+      keywords: [
+        ...keywords.keywords,
+        {
+          id: 'shielded',
+          name: 'Shielded',
+          description: 'Prevents the next instance of damage.',
+        },
+      ],
       abilityKeywords: { ...keywords.abilityKeywords, shielded: 'shielded' },
     };
     const resolved = resolveAbility('shielded_1', paramKeywords);
-    expect(resolved.keyword).toEqual({ name: 'Shielded', description: 'Prevents the next instance of damage.' });
+    expect(resolved.keyword).toEqual({
+      name: 'Shielded',
+      description: 'Prevents the next instance of damage.',
+    });
   });
 });

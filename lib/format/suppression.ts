@@ -13,7 +13,10 @@ export type StatField =
   | 'winRateWhenKept'
   | 'winRateWhenPlayed';
 
-export function statValue(card: CardStat, field: StatField): number | undefined {
+export function statValue(
+  card: CardStat,
+  field: StatField,
+): number | undefined {
   return card[field];
 }
 
@@ -25,7 +28,10 @@ export type SortDirection = 'asc' | 'desc';
 
 // Suppressed rows always sort last, regardless of direction — never as 0
 // (which would otherwise rank them as the worst, or best in a desc sort).
-export function compareStat(field: StatField, direction: SortDirection): (a: CardStat, b: CardStat) => number {
+export function compareStat(
+  field: StatField,
+  direction: SortDirection,
+): (a: CardStat, b: CardStat) => number {
   return (a, b) => {
     const aSuppressed = isSuppressed(a, field);
     const bSuppressed = isSuppressed(b, field);

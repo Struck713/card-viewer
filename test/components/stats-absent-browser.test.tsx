@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/providers';
 import { CardsPageClient } from '../../app/cards/CardsPageClient';
-import { registerCatalogHandlers, registerStatsNotPublished } from '../helpers/handlers';
+import {
+  registerCatalogHandlers,
+  registerStatsNotPublished,
+} from '../helpers/handlers';
 
 const ORIGIN = 'http://test.local'; // matches NEXT_PUBLIC_CATALOG_ORIGIN set in test/setup.ts
 
@@ -19,7 +22,9 @@ describe('stats-absent card browser', () => {
     );
 
     expect(await screen.findByText('Garbage Addict')).toBeInTheDocument();
-    expect(screen.getByText('Statistics have not been published yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('Statistics have not been published yet'),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('Not published yet').length).toBeGreaterThan(0);
 
     const user = userEvent.setup();

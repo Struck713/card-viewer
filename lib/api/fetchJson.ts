@@ -4,7 +4,10 @@ import { HttpError, NetworkError } from './errors';
 // API. GET only, no credentials/cookies/auth headers — the API is
 // anonymous, wildcard-CORS, and there is nothing on the other end to
 // authenticate (docs/data-layer.md).
-export async function fetchResponse(url: string, headers?: HeadersInit): Promise<Response> {
+export async function fetchResponse(
+  url: string,
+  headers?: HeadersInit,
+): Promise<Response> {
   try {
     return await fetch(url, { method: 'GET', credentials: 'omit', headers });
   } catch (error) {

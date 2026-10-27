@@ -8,15 +8,15 @@ re-reading the whole brief every time.
 
 ## Endpoints
 
-| Endpoint | Purpose | Can 404 today? |
-|---|---|---|
-| `GET /data/v1/latest.json` | Catalog index: points at the current card release | Yes, if catalog never deployed |
-| `GET /data/v1/releases/<catalogVersion>/cards.json` | All cards for that release | Only if index is inconsistent (bug) |
-| `GET /data/v1/releases/<catalogVersion>/keywords.json` | Keyword text + ability→keyword map | Only if index is inconsistent (bug) |
-| `GET /data/v1/stats/latest.json` | Stats index: points at current stats release | **Yes, normally** — stats aren't published yet |
-| `GET /data/v1/stats/releases/<releaseId>/card-stats.json` | Per-card rates, sliced by tier/match type | Only if stats index is inconsistent |
-| `GET /data/v1/stats/releases/<releaseId>/deck-stats.json` | Per-faction-pair win rates | Only if stats index is inconsistent |
-| `GET /healthz` | Operator health check | N/A — never call this from the site |
+| Endpoint                                                  | Purpose                                           | Can 404 today?                                 |
+| --------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| `GET /data/v1/latest.json`                                | Catalog index: points at the current card release | Yes, if catalog never deployed                 |
+| `GET /data/v1/releases/<catalogVersion>/cards.json`       | All cards for that release                        | Only if index is inconsistent (bug)            |
+| `GET /data/v1/releases/<catalogVersion>/keywords.json`    | Keyword text + ability→keyword map                | Only if index is inconsistent (bug)            |
+| `GET /data/v1/stats/latest.json`                          | Stats index: points at current stats release      | **Yes, normally** — stats aren't published yet |
+| `GET /data/v1/stats/releases/<releaseId>/card-stats.json` | Per-card rates, sliced by tier/match type         | Only if stats index is inconsistent            |
+| `GET /data/v1/stats/releases/<releaseId>/deck-stats.json` | Per-faction-pair win rates                        | Only if stats index is inconsistent            |
+| `GET /healthz`                                            | Operator health check                             | N/A — never call this from the site            |
 
 All URLs returned inside JSON bodies are root-relative. Always resolve with
 `new URL(relativeUrl, origin)` against the origin you fetched the index from
@@ -28,7 +28,8 @@ These mirror spec §4 exactly; keep them in `lib/api/types.ts` verbatim rather
 than re-deriving them from JSON shapes at runtime.
 
 ```ts
-export type Color = 'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
+export type Color =
+  'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
 export type CardType = 'CREATURE' | 'STRATAGEM' | 'LOCATION';
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 export type TierGroup = 'low' | 'mid' | 'high' | 'legend';
@@ -86,7 +87,7 @@ export interface StatsIndex {
   schemaVersion: number;
   releaseId: string;
   gameVersion: string;
-  catalogVersion: string;      // load THIS catalog release, not latest.json's
+  catalogVersion: string; // load THIS catalog release, not latest.json's
   cardStatsUrl: string;
   deckStatsUrl: string;
 }
@@ -124,13 +125,13 @@ export interface CardStatsResponse {
   schemaVersion: number;
   releaseId: string;
   gameVersion: string;
-  generatedOn: string;        // ISO date
+  generatedOn: string; // ISO date
   method: StatsMethod;
   slices: CardStatsSlice[];
 }
 
 export interface DeckStat {
-  factions: Color[];          // length 1 for a mono-color deck
+  factions: Color[]; // length 1 for a mono-color deck
   matches?: number;
   winRate?: number;
 }
@@ -165,7 +166,7 @@ though they're in the spec:
    treatment — this is called out as the rule most likely to be gotten wrong,
    in the spec's own words.
 3. **The stats index names its own catalog version.** When stats are loaded,
-   fetch `cards.json`/`keywords.json` for `statsIndex.catalogVersion`, *not*
+   fetch `cards.json`/`keywords.json` for `statsIndex.catalogVersion`, _not_
    whatever `catalog/latest.json` currently points at. If they differ, say so
    visibly (e.g. in the provenance bar).
 4. **No slicing beyond `tierGroup` × `matchType`.** Don't build UI that

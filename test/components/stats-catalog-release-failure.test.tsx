@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/providers';
 import { ProvenanceBar } from '../../components/provenance/ProvenanceBar';
-import { registerCatalogHandlers, registerStatsHandlers } from '../helpers/handlers';
+import {
+  registerCatalogHandlers,
+  registerStatsHandlers,
+} from '../helpers/handlers';
 
 const ORIGIN = 'http://test.local'; // matches NEXT_PUBLIC_CATALOG_ORIGIN set in test/setup.ts
 
@@ -15,8 +18,9 @@ describe('stats-named catalog release fetch failure', () => {
     // 404s, which useStats's own fetch must not let go unreported.
     const { server } = await import('../msw/server');
     server.use(
-      http.get('http://test.local/data/v1/releases/0.1.0-other/cards.json', () =>
-        HttpResponse.json({ error: 'not found' }, { status: 404 }),
+      http.get(
+        'http://test.local/data/v1/releases/0.1.0-other/cards.json',
+        () => HttpResponse.json({ error: 'not found' }, { status: 404 }),
       ),
     );
 
@@ -28,7 +32,9 @@ describe('stats-named catalog release fetch failure', () => {
 
     expect(await screen.findByText(/Catalog version:/)).toBeInTheDocument();
     expect(
-      await screen.findByText(/Could not verify the catalog release the statistics describe/),
+      await screen.findByText(
+        /Could not verify the catalog release the statistics describe/,
+      ),
     ).toBeInTheDocument();
   });
 });
