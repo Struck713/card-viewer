@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-28T03:11:27.525Z",
+  "methodology": {
+    "metric": "starting_deck_inclusion",
+    "modes": ["ranked_ai", "authoritative_pvp"],
+    "aiSeats": "both",
+    "copies": "once_per_player_game",
+    "rulesVersions": "combined",
+    "minSample": 1,
+    "preliminary": true,
+    "privacy": "No raw identities or deck lists. Small sample changes may reveal deck inclusion or outcomes."
+  },
+  "cards": [
+    { "id": "b_001", "matches": 4, "wins": 3, "losses": 1, "winRate": 0.75 },
+    { "id": "t_019", "matches": 0, "wins": 0, "losses": 0, "winRate": null },
+    { "id": "gen_str_001", "matches": 2, "wins": 0, "losses": 2, "winRate": 0 }
+  ]
+}

@@ -12,7 +12,7 @@ describe('stats network error on /cards', () => {
   it('a genuine stats API failure shows a visible error, never silently renders as "not published"', async () => {
     registerCatalogHandlers(ORIGIN);
     server.use(
-      http.get(`${ORIGIN}/data/v1/stats/latest.json`, () =>
+      http.get(`${ORIGIN}/data/stats/card-winrates.json`, () =>
         HttpResponse.error(),
       ),
     );

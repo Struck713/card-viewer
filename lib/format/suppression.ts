@@ -21,7 +21,9 @@ import type { CardWinrate } from '../api/types';
 // upstream return to key-absence degrades to "not enough data" rather than
 // rendering the string "undefined".
 export function isSuppressed(stat: CardWinrate | undefined): boolean {
-  return stat === undefined || stat.winRate === null;
+  // `== null` on purpose, so this is one expression covering null, a card
+  // with no row at all, and a future return to key-absence.
+  return stat?.winRate == null;
 }
 
 export function winRateValue(stat: CardWinrate | undefined): number | null {
