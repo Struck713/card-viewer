@@ -1,81 +1,90 @@
 # Suppression, empty states, and non-goals
 
-The spec calls suppression "the rule most likely to be got wrong" (§3.5).
+The spec calls suppression "the rule most likely to be got wrong" (§3.3).
 This doc exists so it's impossible to miss, and so there's one place that
 collects every "don't build this" boundary from the spec in one list.
 
 ## The suppression rule
 
-A `CardStat` figure that doesn't meet `method.minSample` after capping is
-**absent from the object** — not `0`, not `null`, the key doesn't exist. A
-card that qualifies for nothing in a slice is absent from `slice.cards`
-entirely.
+A win rate the publisher won't stand behind arrives as **`winRate: null`**,
+paired with `matches: 0`. Null means "not enough data". It is never `0`.
+
+The rule used to read "the key is absent, not `0`, not `null`" — the API
+changed how it expresses suppression on 2026-10-28, not whether it does.
+
+**Zero is real, and this is what raises the stakes.** `winRate: 0` with
+`matches > 0` means the card lost every game it was in. When the live
+endpoint was last sampled, 59 of 168 rows carried a genuine `0` sitting
+right beside 40 that carried `null`. Under the old contract a suppressed
+figure was the only thing that could look like zero, so `?? 0` was a latent
+bug you could ship without noticing. Now both states occur in every
+response, and conflating them is a visible lie: it tells a reader that a
+card with no games lost all of them.
 
 **Correct:**
 
 ```ts
-if ('winRateWhenPlayed' in card) {
-  renderPercent(card.winRateWhenPlayed);
+if (isSuppressed(stat)) {
+  renderSuppressed(); // "not enough data", citing methodology.minSample
 } else {
-  renderSuppressed(); // "not enough data", with a tooltip citing method.minSample
+  renderPercent(stat.winRate); // including a real 0 -> "0.0%"
 }
 ```
 
 **Wrong — these are real bugs, not style choices:**
 
 ```ts
-renderPercent(card.winRateWhenPlayed || 0); // false negative → fake 0%
-renderPercent(card.winRateWhenPlayed ?? 0); // same bug, nullish form
-sortRows((a, b) => (b.winRateWhenPlayed ?? 0) - (a.winRateWhenPlayed ?? 0)); // sorts suppressed cards to the bottom as if they're the worst performers
+renderPercent(stat.winRate ?? 0); // null becomes a fake 0%, indistinguishable from a real one
+renderPercent(stat.winRate || 0); // same bug, and it also eats a genuine 0
+sortRows((a, b) => (b.winRate ?? 0) - (a.winRate ?? 0)); // ranks "no games" among the cards that lost everything
 ```
 
-Build one shared helper and route every stat display through it rather than
-inlining the `in` check at each call site:
+Route every stat display through the shared helpers rather than inlining a
+null check at each call site:
 
 ```ts
 // lib/format/suppression.ts
-export type StatField =
-  | 'drawRate'
-  | 'keepRate'
-  | 'playRate'
-  | 'winRateWhenDrawn'
-  | 'winRateWhenKept'
-  | 'winRateWhenPlayed';
-
-export function statValue(
-  card: CardStat,
-  field: StatField,
-): number | undefined {
-  return card[field];
+export function isSuppressed(stat: CardWinrate | undefined): boolean {
+  // `== null` covers null, a card with no row at all, and a future
+  // upstream return to key-absence — all of which read "not enough data".
+  return stat?.winRate == null;
 }
 
-export function isSuppressed(card: CardStat, field: StatField): boolean {
-  return !(field in card);
+export function winRateValue(stat: CardWinrate | undefined): number | null {
+  return stat?.winRate ?? null;
 }
+
+export function compareWinRate(direction: SortDirection): Comparator;
 ```
 
-A sortable table column backed by a suppressed figure needs a defined sort
-position for suppressed rows (e.g. always last, regardless of sort
-direction) — decide this once in the table component, not per-column.
+A suppressed figure sorts **last in both directions** — decided once in
+`compareWinRate`, not per-column. Sorting it as `0` would bury it among the
+cards that genuinely lost every game, which is exactly the distinction the
+rule protects.
 
-A card present in the catalog but absent from the current slice is "no
-published data for this slice." Render this visually distinct from "a card
-with bad stats" — e.g. a muted "—" row state, not a red/low-value-looking
-cell.
+**Counts have no suppressed state.** `matches`, `wins` and `losses` are
+always present, and `0` / `0–0` is a real "no games" — not "not enough
+data". Only `winRate` is ever suppressed, so the Record column still renders
+`0–0` for a card whose rate is null.
+
+A card present in the catalog but with **no row at all** in the statistics
+file is "no published data". That is the collectible/non-collectible split:
+the file covers collectible cards, so a token or transform form reached
+through a card's Transforms section has no row. Render it distinctly from
+both a suppressed figure and a real low value.
 
 ## Empty and degraded states
 
-| Condition                                                                   | What the user sees                                                                                                                                                                                         |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No stats release exists yet (today's default state)                         | Full card browser (table, detail, filters, search, sort) with every stats-dependent column/section replaced by "statistics have not been published yet" — never hidden silently, never replaced with zeros |
-| Stats release exists, but a given slice has no data for a card              | "No published data for this slice" on that card, distinct from a suppressed-but-present-elsewhere figure                                                                                                   |
-| Switching the slice selector                                                | Must not silently drop cards from view without saying why — if a card has no entry in the newly selected slice, show that explicitly rather than just omitting the row                                     |
-| `stats/latest.json`'s `catalogVersion` differs from `catalog/latest.json`'s | Visible notice (e.g. in the provenance bar) that the statistics describe a different catalog release than the one being browsed                                                                            |
-| A release file named by an index 404s                                       | Visible error state — this is an API inconsistency bug, never silently treated the same as "not published"                                                                                                 |
-| A `?stats=<releaseId>` link names a release that 404s                       | "That statistics release doesn't exist", naming the id — a bad or expired link, distinct from both "not published" and the API-inconsistency error above; the card browser keeps working                   |
-| A `?stats=` link is loaded (release exists)                                 | The view says it is pinned and offers a link back to the latest release — never silently show an older release under a link that named a specific one                                                      |
-| A `?stats=` link omitted `?catalog=`                                        | State that the catalog release the statistics describe is unknown. A release file records no `catalogVersion`, so there is nothing to compare — and "unknown" must not be rendered as agreement            |
-| Unknown `schemaVersion`                                                     | Sitewide "this site needs updating" notice; don't attempt partial rendering                                                                                                                                |
+| Condition                                               | What the user sees                                                                                                                                                                                         |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The statistics file 404s                                | Full card browser (table, detail, filters, search, sort) with every stats-dependent column/section replaced by "statistics have not been published yet" — never hidden silently, never replaced with zeros |
+| `winRate` is `null`                                     | "Not enough data" on that figure, with `matches` and the win–loss record still shown beside it                                                                                                             |
+| `winRate` is a genuine `0`                              | `0.0%` — a real result, visually distinct from "not enough data" and never conflated with it                                                                                                               |
+| A catalog card has no row in the statistics file        | "No published data" on that card, distinct from a suppressed figure                                                                                                                                        |
+| `methodology.preliminary` is `true` (today's state)     | A prominent notice on every page showing a statistic, stating `minSample` as read from the payload and noting that AI matches are included                                                                 |
+| Either catalog file 404s                                | Sitewide "catalog not available" error — there is nothing to browse                                                                                                                                        |
+| A payload parses as JSON but has the wrong shape        | Treated as an error, not rendered. There is no version field to warn us, so this assertion is the only guard (see `data-contract.md` rule #1)                                                              |
+| Statistics load but `generatedAt` is stale or advancing | Nothing special. It is a recompute clock; the site displays what it is told and never presents it as a release                                                                                             |
 
 ## Hard non-goals (spec §7)
 
@@ -86,10 +95,18 @@ not a missing feature to request differently:
 - Player profiles, leaderboards, match history, anything per-account — the
   API carries no player/match identifiers, by design and by an automated
   privacy scan upstream.
-- Deck lists, deck codes, "top decks" — `deck-stats.json` is faction pairs
-  only, nothing more granular exists.
-- Date-range, patch-over-time, or region filters — releases are snapshots;
-  the only "history" is older release ids, not a time series endpoint.
+- Deck lists, deck codes, "top decks", or deck and faction statistics of any
+  kind. Deck statistics do not exist — not merely deck lists.
+- **Statistics the API doesn't publish, derived from the ones it does.** In
+  particular, do not aggregate card rows into a faction or colour win rate:
+  the metric counts player-games by starting-deck inclusion, so summing a
+  faction's cards counts the same game once per included card of that
+  colour. This is the trap most likely to be walked into, which is why it
+  gets its own bullet.
+- Slicing of any kind — tier, match type, patch, region, date range, deck,
+  player. One figure per card is all there is.
+- Date-range or history views. There are no release ids and no snapshots;
+  the only thing you have is the current recompute.
 - Realtime/per-match feeds, webhooks, writing anything back — the API is
   `GET`/`HEAD`/`OPTIONS` static JSON, full stop.
 - Treating the game repo's raw internal card/keyword JSON as a data source
@@ -99,3 +116,6 @@ not a missing feature to request differently:
   copy would be a second, silently stale source of card data.
 - Inventing endpoints (`/cards/:id`, `?color=`, `/search`). They don't exist
   and will 404 — all filtering is client-side over the full array.
+- Inventing identifiers the API doesn't publish. There is no catalog
+  version, game version or stats release id. Don't substitute `cards.json`'s
+  `ETag` as a pseudo-version, and don't present `generatedAt` as a release.

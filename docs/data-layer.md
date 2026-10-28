@@ -9,162 +9,138 @@ component should call `fetch()` on a catalog/stats URL directly.
 Per spec §4.1: there is no server-side filtering, sorting, or per-card route.
 `?query=` strings are ignored. The entire client model is:
 
-1. Fetch `latest.json`.
-2. Resolve and fetch `cardsUrl` and `keywordsUrl` against that origin.
-3. Hold `cards: Card[]` and the keyword maps in memory (and cache, see
-   below), indexed by `id` (a `Map<string, Card>`).
-4. All search/filter/sort described in spec §5.1 happens over that in-memory
+1. Fetch `/data/cards.json` and `/data/keywords.json`.
+2. Hold `cards: Card[]` and the keyword maps in memory, indexed by `id` (a
+   `Map<string, Card>`).
+3. All search/filter/sort described in spec §5.1 happens over that in-memory
    array in the browser. Never add a loading state per keystroke of search —
    there's no request to make.
 
-Same pattern for stats: fetch `stats/latest.json` once, then the two release
-files it names, hold them in memory, derive the current slice by filtering
-`slices` for the selected `tierGroup`/`matchType`.
+There is no index file to read first, no URL inside a payload to resolve, and
+no version in any path, so each path is a literal constant.
 
 ```ts
 // lib/api/catalog.ts (shape, not full implementation)
-export async function loadCatalog(origin: string): Promise<{
-  index: CatalogIndex;
-  cards: Card[];
-  keywords: KeywordsResponse;
-}> {
-  const index = await fetchJson<CatalogIndex>(`${origin}/data/v1/latest.json`);
-  assertSchemaVersion(index.schemaVersion);
-  const cardsUrl = new URL(index.cardsUrl, origin);
-  const keywordsUrl = new URL(index.keywordsUrl, origin);
-  const [cardsRes, keywords] = await Promise.all([
-    fetchJson<CardsResponse>(cardsUrl.toString()),
-    fetchJson<KeywordsResponse>(keywordsUrl.toString()),
+export async function loadCatalog(origin: string): Promise<CatalogResult> {
+  const [cardsRes, keywordsRes] = await Promise.all([
+    fetchRevalidated<CardsResponse>(`${origin}/data/cards.json`),
+    fetchRevalidated<KeywordsResponse>(`${origin}/data/keywords.json`),
   ]);
-  return { index, cards: cardsRes.cards, keywords };
+  return {
+    status: 'ok',
+    data: {
+      cards: cardsRes.cards,
+      cardsById: indexCardsById(cardsRes.cards),
+      keywords: keywordsRes,
+    },
+  };
 }
 ```
+
+Same shape for statistics: one fetch of `/data/stats/card-winrates.json`,
+indexed by card id at load time (`LoadedStats.byId`) because every consumer
+joins on it.
 
 ## Caching
 
-Per spec §4.2:
+Per spec §4.2. **Nothing is immutable and nothing is addressed by a release
+id**, so there is no forever-cache here — that was the previous contract.
 
-- **Index files** (`latest.json`, `stats/latest.json`) are
-  `Cache-Control: no-cache` with an `ETag`. Always re-validate these: send
-  `If-None-Match` on repeat loads within a session and handle a `304` by
-  reusing the previously parsed body.
-- **Release files** (`cards.json`, `keywords.json`, `card-stats.json`,
-  `deck-stats.json`) are `public, max-age=31536000, immutable`. Their bytes
-  never change for a given version, so cache them in `localStorage` or
-  IndexedDB **keyed by release id** (`catalogVersion` for catalog files,
-  `releaseId` for stats files), not by URL alone — this is what lets a
-  returning visitor skip the network entirely for an already-seen release.
+- **Catalog files** (`cards.json`, `keywords.json`) are
+  `Cache-Control: no-cache` **with** an `ETag`. `fetchRevalidated()` sends
+  `If-None-Match` on repeat loads and handles a `304` by replaying a stored
+  body. This is the only caching the data layer does.
+- **The statistics file** carries **no `ETag`** and is recomputed
+  continuously, so it cannot be conditionally revalidated at all.
+  `fetchFresh()` refetches it every time and stores nothing. That is not a
+  compromise: there is no 304 that could ever arrive to read a stored body
+  back, and caching a live endpoint would pin a visitor to numbers that have
+  moved on.
 
 ```ts
 // lib/api/cache.ts (shape)
-export async function fetchReleaseFile<T>(
-  url: string,
-  releaseKey: string,
-): Promise<T> {
-  const cached = readCache<T>(releaseKey);
-  if (cached) return cached;
-  const body = await fetchJson<T>(url);
-  writeCache(releaseKey, body);
+export async function fetchRevalidated<T>(url: string): Promise<T> {
+  const etag = readEtag(url);
+  const res = await fetchResponse(
+    url,
+    etag ? { 'If-None-Match': etag } : undefined,
+  );
+  if (res.status === 304) return readBodyCache<T>(url)!;
+  const body = await res.json();
+  writeEtag(url, res.headers.get('ETag'));
+  writeBodyCache(url, body);
   return body;
 }
 
-export async function fetchIndexFile<T>(url: string): Promise<T> {
-  const etag = readEtag(url);
-  const res = await fetch(
-    url,
-    etag ? { headers: { 'If-None-Match': etag } } : undefined,
-  );
-  if (res.status === 304) return readIndexCache<T>(url)!;
-  const body = await res.json();
-  writeEtag(url, res.headers.get('ETag'));
-  writeIndexCache(url, body);
-  return body;
+export async function fetchFresh<T>(url: string): Promise<T> {
+  // No ETag upstream, so nothing to revalidate and nothing to store.
+  return (await fetchResponse(url)).json();
 }
 ```
 
-Wrap all `localStorage`/IndexedDB access in try/catch — private browsing or
-blocked storage must degrade to "just refetch," never throw and break the
-page.
+Wrap all `localStorage` access in try/catch — private browsing or blocked
+storage must degrade to "just refetch," never throw and break the page.
+`cache.ts` also sweeps the dead `cardgame-viewer:release:` keys on load, so
+a returning visitor doesn't carry an old release body forever.
 
 ## Error handling matrix
 
-Per spec §4.4, every non-2xx must be handled explicitly and distinctly. Don't
-collapse these into one generic "failed to load" state:
+Per spec §4.4, every non-2xx must be handled explicitly and distinctly.
+There is no index naming a file any more, so each 404 has exactly one
+meaning — which makes this matrix shorter and less ambiguous than it was,
+not vaguer.
 
-| Situation                                    | Response                                                      | Site behavior                                                                                                                              |
-| -------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /data/v1/latest.json` → 404             | Catalog never deployed                                        | Rare/unexpected at launch — if this happens, the whole site has nothing to show; display a clear "catalog not available" page, not a crash |
-| `GET /data/v1/stats/latest.json` → 404       | Stats not published yet (**the expected, common case today**) | Card browser works fully; show the "statistics have not been published yet" notice wherever stats would appear                             |
-| A release file named by an index returns 404 | API is internally inconsistent — a real bug, not an absence   | Show a visible error, distinct from the "not published" empty state; this should never happen in a correctly operating API                 |
-| `schemaVersion` present but not `1`          | This client is out of date relative to the contract           | "This site needs updating" notice; do not attempt to render                                                                                |
-| Network failure / non-JSON body              | Transient or environment issue                                | Retry affordance; don't cache a failure                                                                                                    |
+| Situation                              | Response                                                  | Site behavior                                                                                          |
+| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `cards.json` or `keywords.json` → 404  | Catalog not available at this origin                      | The whole site has nothing to show; display a clear "catalog not available" page, not a crash          |
+| `/data/stats/card-winrates.json` → 404 | Statistics not published                                  | Card browser works fully; show "statistics have not been published yet" wherever statistics would be   |
+| Valid JSON, unexpected shape           | A breaking change, arriving with no version field to warn | Resolve to `network-error`. This assertion is the only guard there is — see `data-contract.md` rule #1 |
+| Network failure / non-JSON body        | Transient or environment issue                            | Retry affordance; don't cache a failure                                                                |
 
-Model this as a typed result rather than throwing strings, e.g.:
+Model this as a typed result rather than throwing strings:
 
 ```ts
 type CatalogResult =
   | { status: 'ok'; data: LoadedCatalog }
   | { status: 'not-deployed' }
-  | { status: 'schema-mismatch'; got: number }
-  | { status: 'inconsistent'; url: string }
   | { status: 'network-error'; error: unknown };
 
 type StatsResult =
   | { status: 'ok'; data: LoadedStats }
   | { status: 'not-published' }
-  | { status: 'schema-mismatch'; got: number }
-  | { status: 'inconsistent'; url: string }
   | { status: 'network-error'; error: unknown };
 ```
 
-`useCatalog()`/`useStats()` hooks return one of these discriminated unions
-instead of `{ data, loading, error }` with `error: unknown` — it forces every
-call site to handle "not published" differently from "broken," which is
-exactly the distinction the spec insists on.
+`useCatalog()`/`useStats()` return one of these discriminated unions instead
+of `{ data, loading, error }` with `error: unknown` — it forces every call
+site to handle "not published" differently from "broken," which is exactly
+the distinction the spec insists on.
+
+Two cases the previous contract had are gone, deliberately rather than by
+omission: **`schema-mismatch`** (no payload carries a `schemaVersion`, so
+there is nothing to gate on) and **`inconsistent`** (it meant "an index named
+a file that 404s", and there is no index).
 
 ## CORS and methods
 
 Per spec §4.3/§4.5: the API sends `Access-Control-Allow-Origin: *` with no
-credentials, and only serves `GET`/`HEAD`/`OPTIONS`. Never attach cookies,
-`Authorization` headers, or `credentials: 'include'` to these fetches —
-there's nothing on the other end to authenticate, and sending credentials to
-a wildcard-CORS endpoint is also just bad practice to carry into other code.
+credentials, allows `If-None-Match` as a request header, exposes `ETag`, and
+only serves `GET`/`HEAD`/`OPTIONS`. Never attach cookies, `Authorization`
+headers, or `credentials: 'include'` to these fetches — there's nothing on
+the other end to authenticate, and sending credentials to a wildcard-CORS
+endpoint is also just bad practice to carry into other code.
 
 ## Linking
 
-Per spec §4.6: any shareable link to a specific statistic must carry the
-`releaseId` (and `catalogVersion` where relevant) in the URL — e.g.
-`/cards/g_001?stats=stats-1.0.0-r1&catalog=1.2.3` — so the link still makes
-sense after the next stats publish supersedes "latest."
+**Nothing in the URL selects what data to load.** There is one catalog and
+one statistics file, no slices to choose between and no release to pin, so
+card links are plain `/cards/<id>` and `/cards`.
 
-**`?catalog=` is not optional decoration.** A stats release file carries no
-`catalogVersion` of its own (only `stats/latest.json` does — see
-[`data-contract.md`](./data-contract.md)), so a release loaded by id cannot
-say which catalog release it describes. Without `?catalog=`, rule #3 is
-unenforceable for that link, and the site must say the catalog release is
-_unknown_ rather than assume it matches what's being browsed.
+This is why the app has no `useSearchParams()` caller at all, which in turn
+is why there is no Suspense boundary around the providers: the previous
+`?tier=`/`?match=`/`?stats=`/`?catalog=` plumbing forced one to keep the
+static shell prerendering, and removing the params removed the problem.
 
-How it fits together:
-
-| Piece                                     | Role                                                                                                                                           |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useSlice()`                              | Parses `?stats=`/`?catalog=`; `toQueryString()` carries them into every outgoing link, `unpinnedQueryString()` drops them for "back to latest" |
-| `PinnedStatsSync` (`app/providers.tsx`)   | Reports the pin up to `AppProviders`, which loads that release instead of latest                                                               |
-| `loadStatsRelease()` (`lib/api/stats.ts`) | Fetches `/data/v1/stats/releases/<id>/{card,deck}-stats.json` directly, mirroring `loadCatalogRelease`                                         |
-| `StatsProvenance` (`lib/api/errors.ts`)   | Carries `pinned` and a `catalogVersion` that may be `null` (= unknown)                                                                         |
-| `ProvenanceBar`                           | Shows that the view is pinned, and offers the way back to latest                                                                               |
-
-Two rules this design exists to enforce:
-
-- **A pinned view must say it is pinned.** Silently showing an older release
-  under a link that promised a specific one is the failure `?stats=` is
-  meant to prevent, not a milder version of it.
-- **A pinned release that 404s is `pinned-not-found`, not `not-published`.**
-  A bad or expired link and "no statistics exist yet" are different facts;
-  so is `inconsistent`, which means an index named a file that doesn't
-  exist. All three stay separate result cases.
-
-Because `releaseId` comes from the URL, `loadStatsRelease` percent-encodes
-it, and gates on the release file's own `schemaVersion` — there is no index
-in the path to do it, so without that check `?stats=` would be a way around
-the schema gate.
+If versioning ever returns upstream, re-read spec §8 question 1 first — the
+plumbing was removed rather than left dormant, so this is a rebuild, not a
+flag.

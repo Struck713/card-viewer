@@ -26,28 +26,40 @@ fixtures for anything the real origin lacks).
 | Doc                                                        | Covers                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [`architecture.md`](./architecture.md)                     | Tech stack, rendering strategy, project layout                                              |
-| [`data-contract.md`](./data-contract.md)                   | Condensed API reference + TypeScript types (derived from the spec)                          |
+| [`data-contract.md`](./data-contract.md)                   | Condensed endpoint reference + the non-negotiable rules (types live in `lib/api/types.ts`)  |
 | [`data-layer.md`](./data-layer.md)                         | Fetch/cache/error-handling design for the API client                                        |
 | [`pages-and-components.md`](./pages-and-components.md)     | Route map and component breakdown against the spec's requirements                           |
 | [`suppression-and-states.md`](./suppression-and-states.md) | The suppression rule, empty states, error states — the parts most likely to be gotten wrong |
 | [`testing.md`](./testing.md)                               | Test strategy, required fixture-based tests                                                 |
-| [`deployment.md`](./deployment.md)                         | Static hosting, the catalog origin, configuration, build/release checklist                  |
+| [`deployment.md`](./deployment.md)                         | Static hosting, the catalog origin and its verified behavior, configuration                 |
 | [`open-questions.md`](./open-questions.md)                 | Owner questions and definition of done, carried over from the spec                          |
 
-## Current status (as of this writing)
+## Current status (as of 2026-10-28)
 
 Confirmed by probing the live catalog origin, not assumed:
 
-- The **card catalog** API (`/data/v1/...`) is published and live, serving
-  release `0.1.0` (176 cards) with the spec's full §4.4 transport contract
-  — JSON 404s, immutable release caching, wildcard CORS with `ETag`
-  exposed. See [`deployment.md`](./deployment.md) for the evidence table.
-- The **stats** API (`/data/v1/stats/...`) is still not published —
-  `stats/latest.json` 404s at that origin. Ship the card-browser-only mode
-  first; see [`suppression-and-states.md`](./suppression-and-states.md) for
-  how the site must behave while this is true, and note that the site is
-  built to survive stats going from "absent" to "present" with no code
-  change.
+- **The API was restructured and the entire `/data/v1/...` space is gone.**
+  Every path under it 404s. See the spec's §0 for the full accounting; in
+  short, there is no index file, no release id, no versioned path, and no
+  `schemaVersion`/`catalogVersion`/`gameVersion` on any payload.
+- **Both halves are now live, as three flat files:**
+  `/data/cards.json` (176 cards) and `/data/keywords.json`, both
+  `no-cache` with an `ETag`; and `/data/stats/card-winrates.json` (168
+  rows), `no-cache` with **no** `ETag`. See
+  [`deployment.md`](./deployment.md) for the evidence table.
+- **Statistics are a live view, not a batch publication.**
+  `methodology.preliminary` is `true` with `minSample: 1`, `generatedAt`
+  advances on a roughly 60-second recompute, and the figures move between
+  loads. The site shows them with a prominent caveat and the match count
+  beside every rate.
+- **Suppression is now `winRate: null`, and `0` is a real value** that
+  appears beside it in every response. See
+  [`suppression-and-states.md`](./suppression-and-states.md) — this is
+  still the rule most likely to be gotten wrong, and the change made it
+  more load-bearing, not less.
+- The statistics file can still 404, and the card browser must stay fully
+  usable when it does. That resilience was already load-bearing once, when
+  the whole `/data/v1` space disappeared.
 - `CATALOG_ORIGIN` is the game team's origin, reached only through
   `getCatalogOrigin()`. Nothing in this stack hardcodes it, including as a
   fallback default — that's what keeps it swappable if they move it.
