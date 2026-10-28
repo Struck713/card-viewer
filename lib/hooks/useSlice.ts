@@ -13,14 +13,21 @@ export interface UseSliceResult {
   tierGroup: TierGroup;
   matchType: MatchType;
   // ?stats=<releaseId>, present when a link pinned a specific stats release
-  // (docs/data-layer.md §4.6). Not yet acted on by the data layer — callers
-  // that need "load this stats release specifically" are out of scope here.
+  // (docs/data-layer.md §4.6). Read by PinnedStatsSync in app/providers.tsx,
+  // which is what actually loads that release instead of "latest".
   releaseId: string | null;
+  // ?catalog=<version> — the catalog release the pinned statistics
+  // describe. A release file carries no catalogVersion of its own, so a
+  // pinned link is the only place this can come from; null means the link
+  // didn't say.
+  catalogVersion: string | null;
   setSlice: (tierGroup: TierGroup, matchType: MatchType) => void;
-  // Carries tier/match/stats into any other link built off this page, so
-  // the current slice/release selection survives navigation instead of
-  // resetting to the default.
+  // Carries tier/match/stats/catalog into any other link built off this
+  // page, so the current slice and pinned release survive navigation
+  // instead of resetting to the default.
   toQueryString: () => string;
+  // Same, minus the pin — the "back to the latest release" link.
+  unpinnedQueryString: () => string;
   findSlice: <T extends { tierGroup: TierGroup; matchType: MatchType }>(
     slices: T[],
   ) => T | undefined;
@@ -53,6 +60,7 @@ export function useSlice(): UseSliceResult {
   const tierGroup = isTierGroup(tierParam) ? tierParam : DEFAULT_TIER;
   const matchType = isMatchType(matchParam) ? matchParam : DEFAULT_MATCH;
   const releaseId = searchParams.get('stats');
+  const catalogVersion = searchParams.get('catalog');
 
   const setSlice = useCallback(
     (nextTier: TierGroup, nextMatch: MatchType) => {
@@ -69,8 +77,16 @@ export function useSlice(): UseSliceResult {
     params.set('tier', tierGroup);
     params.set('match', matchType);
     if (releaseId) params.set('stats', releaseId);
+    if (catalogVersion) params.set('catalog', catalogVersion);
     return params.toString();
-  }, [tierGroup, matchType, releaseId]);
+  }, [tierGroup, matchType, releaseId, catalogVersion]);
+
+  const unpinnedQueryString = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('tier', tierGroup);
+    params.set('match', matchType);
+    return params.toString();
+  }, [tierGroup, matchType]);
 
   const findSlice = useCallback(
     <T extends { tierGroup: TierGroup; matchType: MatchType }>(
@@ -87,8 +103,10 @@ export function useSlice(): UseSliceResult {
     tierGroup,
     matchType,
     releaseId,
+    catalogVersion,
     setSlice,
     toQueryString,
+    unpinnedQueryString,
     findSlice,
   };
 }

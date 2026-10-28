@@ -134,6 +134,37 @@ a wildcard-CORS endpoint is also just bad practice to carry into other code.
 
 Per spec §4.6: any shareable link to a specific statistic must carry the
 `releaseId` (and `catalogVersion` where relevant) in the URL — e.g.
-`/cards/g_001?stats=stats-1.0.0-r1` — so the link still makes sense after the
-next stats publish supersedes "latest." Plan the route/query shape for this
-from the start rather than retrofitting it.
+`/cards/g_001?stats=stats-1.0.0-r1&catalog=1.2.3` — so the link still makes
+sense after the next stats publish supersedes "latest."
+
+**`?catalog=` is not optional decoration.** A stats release file carries no
+`catalogVersion` of its own (only `stats/latest.json` does — see
+[`data-contract.md`](./data-contract.md)), so a release loaded by id cannot
+say which catalog release it describes. Without `?catalog=`, rule #3 is
+unenforceable for that link, and the site must say the catalog release is
+_unknown_ rather than assume it matches what's being browsed.
+
+How it fits together:
+
+| Piece                                     | Role                                                                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useSlice()`                              | Parses `?stats=`/`?catalog=`; `toQueryString()` carries them into every outgoing link, `unpinnedQueryString()` drops them for "back to latest" |
+| `PinnedStatsSync` (`app/providers.tsx`)   | Reports the pin up to `AppProviders`, which loads that release instead of latest                                                               |
+| `loadStatsRelease()` (`lib/api/stats.ts`) | Fetches `/data/v1/stats/releases/<id>/{card,deck}-stats.json` directly, mirroring `loadCatalogRelease`                                         |
+| `StatsProvenance` (`lib/api/errors.ts`)   | Carries `pinned` and a `catalogVersion` that may be `null` (= unknown)                                                                         |
+| `ProvenanceBar`                           | Shows that the view is pinned, and offers the way back to latest                                                                               |
+
+Two rules this design exists to enforce:
+
+- **A pinned view must say it is pinned.** Silently showing an older release
+  under a link that promised a specific one is the failure `?stats=` is
+  meant to prevent, not a milder version of it.
+- **A pinned release that 404s is `pinned-not-found`, not `not-published`.**
+  A bad or expired link and "no statistics exist yet" are different facts;
+  so is `inconsistent`, which means an index named a file that doesn't
+  exist. All three stay separate result cases.
+
+Because `releaseId` comes from the URL, `loadStatsRelease` percent-encodes
+it, and gates on the release file's own `schemaVersion` — there is no index
+in the path to do it, so without that check `?stats=` would be a way around
+the schema gate.

@@ -19,6 +19,12 @@ export interface UseStatsResult {
   // (no extra fetch needed); 'loading' while a mismatch is being resolved.
   statsCatalog: CatalogState;
   catalogVersionMismatch: boolean;
+  // True when a stats release is loaded but we don't know which catalog
+  // release it describes — only possible for a ?stats= link that omitted
+  // ?catalog=, since a release file carries no catalogVersion of its own.
+  // Distinct from catalogVersionMismatch === false, which asserts the
+  // versions actually agree.
+  catalogVersionUnknown: boolean;
 }
 
 export function useStats(): UseStatsResult {
@@ -29,7 +35,7 @@ export function useStats(): UseStatsResult {
   }
 
   const statsCatalogVersion =
-    stats.status === 'ok' ? stats.data.index.catalogVersion : null;
+    stats.status === 'ok' ? stats.data.provenance.catalogVersion : null;
   const currentCatalogVersion =
     catalog.status === 'ok' ? catalog.data.index.catalogVersion : null;
   const mismatch =
@@ -61,5 +67,34 @@ export function useStats(): UseStatsResult {
     stats,
     statsCatalog: needsOwnFetch ? fetchedCatalog : catalog,
     catalogVersionMismatch: mismatch,
+    catalogVersionUnknown:
+      stats.status === 'ok' && statsCatalogVersion === null,
   };
+}
+
+// The catalog release whose card data should be rendered.
+//
+// Per docs/data-contract.md rule #3, names and costs shown beside
+// statistics must come from the catalog release the statistics describe,
+// not from whatever catalog/latest.json currently points at. useStats()
+// already fetches that release as `statsCatalog`; this is what makes pages
+// actually render from it.
+//
+// Falls back to the primary catalog when the versions agree (the common
+// case, and the same object — no extra fetch), when no stats are loaded,
+// or when the stats-named release itself couldn't be loaded. That last
+// case is already surfaced in red by ProvenanceBar, so the fallback is
+// visible rather than silent.
+//
+// Error/loading states always come from the primary catalog, since this
+// only ever substitutes an 'ok' one.
+export function useDisplayCatalog(): CatalogState {
+  const catalog = useContext(CatalogContext);
+  const { statsCatalog, catalogVersionMismatch } = useStats();
+  if (!catalog) {
+    throw new Error('useDisplayCatalog must be used within <AppProviders>');
+  }
+  return catalogVersionMismatch && statsCatalog.status === 'ok'
+    ? statsCatalog
+    : catalog;
 }

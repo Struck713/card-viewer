@@ -59,6 +59,17 @@ tests, not manual checks, per the explicit instruction there
    re-parsing a body.
 9. **Default filters.** The card table's initial render includes only
    `collectible: true` cards.
+10. **Release pinning (spec §4.6).** `?stats=<releaseId>` loads that
+    release rather than latest (assert on a release whose numbers differ
+    from latest's — `stats-0.0.0-dev-r2` exists in the fixtures for exactly
+    this); the view says it is pinned; a pinned id that 404s renders
+    "release doesn't exist", not the "not published" empty state; and a
+    link without `?catalog=` reports the catalog release as unknown rather
+    than assuming it matches.
+11. **Mismatched versions render the right card data.** With
+    `stats/latest.json` naming a different `catalogVersion`, names and
+    costs come from _that_ release (rule #3) — not just a notice saying
+    they differ.
 
 ## Manual / exploratory checks
 
@@ -79,7 +90,15 @@ checked by hand before each release:
 ## Test tooling note
 
 Use whatever test runner fits the Next.js app — currently Vitest + Testing
-Library for components, with MSW standing in for the catalog API. Tests
+Library for components, with MSW standing in for the catalog API.
+
+`next/navigation` is mocked globally in `test/setup.ts`, backed by the
+mutable `test/helpers/navigation.ts`. Tests that exercise URL behaviour
+(slice selection, `?stats=` pinning) drive it with `setSearchParams()` and
+assert on `navigationState.pushes`; `resetNavigation()` runs in `afterEach`,
+so anything that doesn't care still gets the empty-params defaults. Don't
+go back to a hardcoded empty `useSearchParams()` — it silently made every
+URL-driven behaviour untestable. Tests
 never hit the real catalog origin: every fetch path is exercised against
 fixtures, so the suite stays deterministic and passes offline, and so the
 absent-stats and inconsistent-API cases (which no live origin produces on

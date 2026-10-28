@@ -63,3 +63,34 @@ export function registerStatsHandlers(
   );
   return index;
 }
+
+// Serves a stats release at its by-id path — the URLs loadStatsRelease
+// constructs for ?stats=<releaseId>, which no index ever names.
+export function registerStatsReleaseHandlers(
+  origin: string,
+  releaseId: string,
+) {
+  const base = `${origin}/data/v1/stats/releases/${releaseId}`;
+  const cardStats = readFixture<CardStatsResponse>(
+    `data/v1/stats/releases/${releaseId}/card-stats.json`,
+  );
+  const deckStats = readFixture<DeckStatsResponse>(
+    `data/v1/stats/releases/${releaseId}/deck-stats.json`,
+  );
+  server.use(
+    http.get(`${base}/card-stats.json`, () => HttpResponse.json(cardStats)),
+    http.get(`${base}/deck-stats.json`, () => HttpResponse.json(deckStats)),
+  );
+  return { cardStats, deckStats };
+}
+
+// A pinned release id that doesn't exist — a bad or expired link.
+export function registerStatsReleaseMissing(origin: string, releaseId: string) {
+  const base = `${origin}/data/v1/stats/releases/${releaseId}`;
+  const notFound = () =>
+    HttpResponse.json({ error: 'not found' }, { status: 404 });
+  server.use(
+    http.get(`${base}/card-stats.json`, notFound),
+    http.get(`${base}/deck-stats.json`, notFound),
+  );
+}

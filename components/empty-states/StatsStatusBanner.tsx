@@ -19,6 +19,17 @@ export function StatsStatusBanner({ stats, compact }: StatsStatusBannerProps) {
   switch (stats.status) {
     case 'not-published':
       return <NotPublishedYet compact={compact} />;
+    case 'pinned-not-found':
+      // Not the same as "no statistics published": the stats program may
+      // be alive and well — this particular link names a release that
+      // isn't there. Only the URL can fix it, so say which one.
+      return (
+        <EmptyState
+          tone="error"
+          title="That statistics release doesn't exist"
+          description={`This link is pinned to stats release "${stats.releaseId}", which could not be found. It may have been withdrawn, or the link may be wrong.`}
+        />
+      );
     case 'schema-mismatch':
       return <SchemaMismatch got={stats.got} />;
     case 'inconsistent':
