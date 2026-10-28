@@ -28,13 +28,13 @@
 
 ## Rendering strategy
 
-All data in this app is fetched from a single external, cacheable, versioned
-JSON API at runtime — there is nothing to render at build time except the
+All data in this app is fetched from a single external, cacheable,
+unversioned JSON API at runtime — there is nothing to render at build time except the
 shell. Use **client components** for anything that reads catalog/stats data:
 
 - `app/layout.tsx` — static shell, server component.
-- Data-dependent routes (`/cards`, `/cards/[id]`, `/factions`,
-  `/methodology`) render a client component that does the fetch via the data
+- Data-dependent routes (`/cards`, `/cards/[id]`, `/methodology`) render a
+  client component that does the fetch via the data
   layer (see [`data-layer.md`](./data-layer.md)) in an effect or a small data
   hook, with a loading state.
 
@@ -56,35 +56,32 @@ app/
   layout.tsx                 # shell: header, nav, footer, provenance bar slot
   page.tsx                   # landing / redirects to /cards
   cards/
-    page.tsx                 # card table (spec §5.1, §5.2)
+    page.tsx                 # card table (spec §5.1)
     [id]/
-      page.tsx                # card detail (spec §5.3)
-  factions/
-    page.tsx                 # faction win rates (spec §5.4)
+      page.tsx                # card detail (spec §5.2)
   methodology/
-    page.tsx                 # method block + plain-language explanation (spec §5.5)
+    page.tsx                 # methodology block + plain-language gloss (spec §5.5)
 lib/
   api/
     config.ts                # CATALOG_ORIGIN resolution
-    catalog.ts                # latest.json, cards.json, keywords.json fetchers
-    stats.ts                  # stats/latest.json, card-stats.json, deck-stats.json fetchers
-    cache.ts                  # ETag/If-None-Match + localStorage/IndexedDB release cache
+    catalog.ts                # /data/cards.json + /data/keywords.json fetcher
+    stats.ts                  # /data/stats/card-winrates.json fetcher
+    cache.ts                  # ETag/If-None-Match revalidation; no forever-cache
+    http.ts                   # the single fetch() call site
     types.ts                  # TypeScript types mirroring the schema (see data-contract.md)
-    errors.ts                 # typed error cases: NotPublished, SchemaMismatch, Inconsistent
+    errors.ts                 # typed result unions + HttpError/NetworkError
   hooks/
-    useCatalog.ts             # loads latest catalog release, exposes cards + keywords
-    useStats.ts               # loads latest stats release if present, else "not published"
-    useSlice.ts               # current tierGroup/matchType selection + derived slice data
+    useCatalog.ts             # reads the catalog context: cards + keywords
+    useStats.ts               # reads the stats context, or "not published"
   format/
-    rates.ts                  # fraction -> percentage formatting, 1 decimal max
-    suppression.ts            # helpers for "is this figure present" checks (see suppression-and-states.md)
+    rates.ts                  # fraction -> percentage (1 decimal) and the W-L record
+    suppression.ts            # null-vs-real-zero helpers (see suppression-and-states.md)
 components/
   card-table/                 # table, filters, search, sort
   card-detail/                 # printed data, resolved keywords, stat rows
-  faction-table/
-  provenance/                  # the small bar showing gameVersion/catalogVersion/releaseId/generatedOn
-  slice-selector/
-  empty-states/                # "not published yet", "schema mismatch", "inconsistent API"
+  provenance/                  # the "Data as of <generatedAt>" strip, methodology panel,
+                               # and the preliminary-data notice
+  empty-states/                # "not published yet", "couldn't load statistics"
   card-art/
     CardArtPlaceholder.tsx     # generic filler image/block used everywhere art would go
 public/                        # static assets only — never catalog data
@@ -118,14 +115,16 @@ wildcard-CORS, so `npm run dev` against it needs nothing else running.
 
 The one alternative worth keeping (spec §2): serve the spec §6 fixtures
 with `npm run dev:fixtures` and point
-`NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8081` at them instead. That's
-how you exercise the suppression and empty-state paths, since the real
-origin has no stats data at all right now.
+`NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8081` at them instead. The
+real origin does serve statistics now, but it can't be asked to 404, to
+mark itself non-preliminary, or to hold a card with no row — the fixtures
+are the only way to see those paths.
 
 ## Why not more than this
 
 Resist adding: a server-side proxy, a database, user accounts, analytics that
 forward query/card data to a third party without sign-off (explicitly
 disallowed, definition of done's last line), or a CMS. Nothing in the spec
-calls for persistence beyond per-viewer `localStorage`/IndexedDB caching of
-immutable release files.
+calls for persistence beyond per-viewer `localStorage` revalidation of the
+two catalog files, and even that is just an `ETag` plus a body to replay on
+a 304.

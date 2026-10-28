@@ -2,26 +2,32 @@
 
 ## Why fixtures matter here
 
-The real catalog server (in the submodule) has no stats data at all today,
-and the real API may 404 entirely for a while (spec §1). The fixtures in
-spec §6 are schema-accurate and deliberately include the exact cases that
-are easy to get wrong:
+The live origin serves statistics now, but it cannot be asked to produce the
+cases that are easiest to get wrong: it can't 404 on demand, can't mark
+itself non-preliminary, and always has a row for every collectible card. The
+fixtures in spec §6 are schema-accurate and deliberately include each of
+those cases:
 
-- `t_019` has a **suppressed** `winRateWhenPlayed` (present `drawRate`,
-  `winRateWhenDrawn`, absent everything else) — use it to prove suppressed
-  fields never render as 0 or get silently defaulted.
-- `gen_str_001` is **absent from the stats slice entirely** — use it to
-  prove "no data for this card in this slice" renders distinctly from "this
-  card has bad stats."
+- `t_019` has a **suppressed** figure: `winRate: null`, `matches: 0`. Use it
+  to prove a null never renders as `0%` or gets silently defaulted.
+- `gen_str_001` has a **genuine `0`**: `winRate: 0` with `matches: 2`, the
+  card having lost both games it was in. Use it alongside `t_019` to prove
+  the two render differently. **This is the most important pair in the
+  fixtures** — under the old contract nothing was ever really `0`, so `?? 0`
+  was a bug no test could catch. Both states now appear in every live
+  response (59 zeros beside 40 nulls when last sampled).
+- `cr_001t` is **absent from the statistics file entirely** — a
+  non-collectible transform form, reachable from `b_001`'s Transforms
+  section. Use it to prove "no published data" renders distinctly from both
+  a suppressed figure and a real low value.
 - `rummage_on_death` is a real example of an ability key that maps to `null`
   in `abilityKeywords` — use it to prove the description fallback actually
   fires and no raw key ever reaches the DOM.
 
-Copy the fixtures from spec §6 verbatim into `test/fixtures/` (or serve them
-from a tiny local static server during tests) rather than re-deriving
-similar-looking test data — the point is to test against exactly the shapes
-the API contract promises, including the specific suppressed/absent cases
-called out above.
+Copy the fixtures from spec §6 verbatim into `test/fixtures/` rather than
+re-deriving similar-looking test data — the point is to test against exactly
+the shapes the API contract promises. Keep `generatedAt` fixed; never stamp
+a live clock into a fixture.
 
 ## Required automated tests
 
@@ -29,47 +35,50 @@ These map directly to spec §9's definition of done — write them as actual
 tests, not manual checks, per the explicit instruction there
 ("verified against a fixture ... a test, not a manual look"):
 
-1. **Schema version gate.** `latest.json`/`stats/latest.json` with
-   `schemaVersion !== 1` → renders the "needs updating" notice, attempts no
-   further parsing.
-2. **Suppression rendering.** Using the `t_019` fixture: `winRateWhenPlayed`
-   renders as "not enough data" (or equivalent), never `0%`, and sorting a
-   table by that column places `t_019` in the defined suppressed position,
-   not at either extreme implied by treating it as 0.
-3. **Slice-absence rendering.** Using the `gen_str_001` fixture: a card
-   present in `cards.json` but absent from the loaded stats slice renders
-   "no published data for this slice," and is not simply missing from the
-   list without explanation.
-4. **Keyword fallback.** Using the `rummage_on_death` fixture: the ability
-   resolves to the card's `description` text, and the raw key string
-   `rummage_on_death` never appears in rendered output.
-5. **Stats-absent card browser.** With `stats/latest.json` returning 404,
-   the card table, filters, search, sort, and card detail all still work,
-   and every stats-dependent area shows "statistics have not been published
-   yet" rather than erroring or rendering blank.
-6. **Inconsistent-API error.** With `latest.json` naming a `cardsUrl` that
-   404s, the site shows a visible error distinct from the "not published"
-   empty state.
-7. **Mismatched catalog/stats versions.** With `stats/latest.json`'s
-   `catalogVersion` different from `catalog/latest.json`'s, the mismatch is
-   visibly surfaced somewhere (provenance bar).
-8. **Caching.** A second load of the same release id does not re-fetch the
-   release file (assert on fetch call count / mock cache hit); an index file
-   reload sends `If-None-Match` and handles a mocked `304` without
-   re-parsing a body.
-9. **Default filters.** The card table's initial render includes only
-   `collectible: true` cards.
-10. **Release pinning (spec §4.6).** `?stats=<releaseId>` loads that
-    release rather than latest (assert on a release whose numbers differ
-    from latest's — `stats-0.0.0-dev-r2` exists in the fixtures for exactly
-    this); the view says it is pinned; a pinned id that 404s renders
-    "release doesn't exist", not the "not published" empty state; and a
-    link without `?catalog=` reports the catalog release as unknown rather
-    than assuming it matches.
-11. **Mismatched versions render the right card data.** With
-    `stats/latest.json` naming a different `catalogVersion`, names and
-    costs come from _that_ release (rule #3) — not just a notice saying
-    they differ.
+1. **Suppression rendering.** Using `t_019`: the win rate renders as "not
+   enough data", never `0%`. Using `gen_str_001`: it renders `0.0%` and
+   **not** "not enough data". Assert both in the same table, because the
+   whole rule is that they are different.
+2. **Suppressed sorting.** Sorting by the win-rate column puts `t_019` last
+   in **both** directions while `gen_str_001` sorts as the real lowest
+   value — ascending leads with the genuine `0`, not with the null. Assert
+   at table level (`sortRows`), not just on the comparator.
+3. **Counts are never suppressed.** A card with `winRate: null` still shows
+   `0` matches and a `0–0` record, because those are real facts.
+4. **Row-absence rendering.** Using `cr_001t`: a card in `cards.json` with
+   no row in the statistics file renders "no published data", not a `0`, a
+   blank, or a suppressed figure.
+5. **Keyword fallback.** Using `rummage_on_death`: the ability resolves to
+   the card's `description` text, and the raw key string never appears in
+   rendered output.
+6. **Stats-absent card browser.** With the statistics file returning 404,
+   the card table, filters, search, sort and card detail all still work, and
+   every stats-dependent area shows "statistics have not been published yet"
+   rather than erroring or rendering blank.
+7. **Stats network error is not "not published".** A failed fetch must show
+   "couldn't load statistics", never the empty state — they are different
+   facts.
+8. **Shape assertion.** A payload that is valid JSON but the wrong shape
+   resolves to an error state rather than reaching the UI. There is no
+   version field to warn us, so this is the only guard.
+9. **Caching asymmetry.** A catalog reload sends `If-None-Match` and handles
+   a mocked `304` without re-parsing a body; two `loadStats` calls make two
+   network fetches and store nothing. The second half is the regression
+   guard against anyone reintroducing release-style caching on a
+   continuously recomputed endpoint.
+10. **Preliminary notice.** It appears while `methodology.preliminary` is
+    true and is absent when false, and it states `minSample` **as read from
+    the payload** — assert with an overridden value, so a hardcoded "1"
+    fails.
+11. **Provenance.** `generatedAt` renders, to the minute, with the raw ISO
+    value in the markup, and is not labelled as a release or a publication
+    date.
+12. **Default filters.** The card table's initial render includes only
+    `collectible: true` cards.
+
+A free guard worth knowing about: handlers are registered only at the flat
+paths, and `server.listen({ onUnhandledFrame: 'error' })` means any stray
+fetch of a `/data/v1/...` path fails the suite by itself. No test needed.
 
 ## Manual / exploratory checks
 
@@ -86,20 +95,21 @@ checked by hand before each release:
 - Color-independence: faction names/colors are always paired with text
   labels, verified by briefly disabling color (e.g. grayscale filter) and
   confirming the page still makes sense.
+- Against the **real** origin: confirm the figures are what the endpoint
+  currently says, and that reloading a minute later shows a new
+  `generatedAt` — which proves the site isn't caching statistics.
 
 ## Test tooling note
 
-Use whatever test runner fits the Next.js app — currently Vitest + Testing
-Library for components, with MSW standing in for the catalog API.
+Vitest + Testing Library for components, with MSW standing in for the
+catalog API.
 
 `next/navigation` is mocked globally in `test/setup.ts`, backed by the
-mutable `test/helpers/navigation.ts`. Tests that exercise URL behaviour
-(slice selection, `?stats=` pinning) drive it with `setSearchParams()` and
-assert on `navigationState.pushes`; `resetNavigation()` runs in `afterEach`,
-so anything that doesn't care still gets the empty-params defaults. Don't
-go back to a hardcoded empty `useSearchParams()` — it silently made every
-URL-driven behaviour untestable. Tests
-never hit the real catalog origin: every fetch path is exercised against
-fixtures, so the suite stays deterministic and passes offline, and so the
-absent-stats and inconsistent-API cases (which no live origin produces on
-demand) are testable at all.
+mutable `test/helpers/navigation.ts`. Nothing reads search params any more —
+the URL selects no data — but `next/link` still needs a router under jsdom,
+so the mock stays.
+
+Tests never hit the real catalog origin: every fetch path is exercised
+against fixtures, so the suite stays deterministic and passes offline, and
+so the absent-stats, genuine-zero and no-row cases (which the live origin
+won't produce on demand) are testable at all.

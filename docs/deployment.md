@@ -13,7 +13,7 @@ actions touching catalog data) are needed or should be reached for.
 Note that the game's own repo deploys a _different_ thing from a separate
 Vercel project — the Godot game's HTML5 web export, live at
 `https://cardgame-xi-orpin.vercel.app/`. That deployment has nothing to do
-with this site and does not serve the catalog API (`/data/v1/...` 404s
+with this site and does not serve the catalog API (`/data/...` 404s
 there); don't confuse the two when picking a project name or domain, and
 never use it as `CATALOG_ORIGIN`.
 
@@ -29,34 +29,47 @@ https://cardgame-catalog-production.up.railway.app
 
 The game's team runs this; it is the real, external source of truth for
 card data, and this project does not deploy, mirror or re-export any part
-of it. Card data changes when they publish a release, which the site picks
-up through `latest.json` with no change here (see "Release-time behavior"
-below).
+of it. Card data changes when they change it, which the site picks up on
+the next load with no change here (see "Release-time behavior" below).
 
-Verified live against this origin, matching the spec's §4.4 transport
+Verified live against this origin, matching the spec's §4.2–§4.5 transport
 contract:
 
-| Behavior                               | Observed                                                                |
-| -------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /data/v1/latest.json`             | `200`, `cache-control: no-cache` + `ETag`                               |
-| `GET /data/v1/releases/<v>/cards.json` | `200`, `cache-control: public, max-age=31536000, immutable` + `ETag`    |
-| Unknown path                           | `404` with a JSON body (`{"error":"not found"}`)                        |
-| CORS                                   | `access-control-allow-origin: *`, `access-control-expose-headers: ETag` |
-| Preflight (`OPTIONS`)                  | `204`, allows `GET, HEAD, OPTIONS` and `If-None-Match`                  |
-| `POST`                                 | `405`                                                                   |
+| Behavior                             | Observed                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `GET /data/cards.json`               | `200`, `cache-control: no-cache` + `ETag`; 176 cards                    |
+| `GET /data/keywords.json`            | `200`, `cache-control: no-cache` + `ETag`                               |
+| `GET /data/stats/card-winrates.json` | `200`, `cache-control: no-cache`, **no `ETag`**; 168 rows               |
+| `GET /data/v1/...` (anything)        | `404` — the entire versioned URL space is gone                          |
+| Unknown path                         | `404` with a JSON body (`{"error":"not found"}`)                        |
+| CORS                                 | `access-control-allow-origin: *`, `access-control-expose-headers: ETag` |
+| Preflight (`OPTIONS`)                | `204`, allows `GET, HEAD, OPTIONS` and `If-None-Match`                  |
+| `POST`                               | `405`                                                                   |
 
-That means the site's conditional-request and release-caching design
-(see [`data-layer.md`](./data-layer.md)) is actually supported end to end
-rather than merely tolerated. Don't _depend_ on anything beyond what the
-spec promises, though — the data layer already treats every non-2xx as a
-typed failure by status code alone and never parses an error body, and
-that's what keeps the origin swappable.
+Two observations the design depends on, both from sampling the live origin
+rather than reading the contract:
 
-Currently published there: catalog release `0.1.0` (`catalogVersion` and
-`gameVersion` both `0.1.0`), 176 cards. The stats half of the API is still
-not published — `/data/v1/stats/latest.json` 404s, checked against this
-same origin — so card-browser-only mode remains the operative state; see
-[`suppression-and-states.md`](./suppression-and-states.md).
+- **The statistics file sends no `ETag`**, so it cannot be conditionally
+  revalidated. The data layer refetches it every load and stores nothing
+  (see [`data-layer.md`](./data-layer.md)). Asking the game's team to add
+  one is the single highest-value upstream request here — the catalog files
+  already have one.
+- **`generatedAt` advances on a ~60-second recompute even when no figure
+  changes.** Sampled five times over 80 seconds: it moved 03:10:26 →
+  03:11:27 while total matches, zero count and null count were identical
+  throughout. It is a recompute clock, not a publication timestamp, and the
+  figures themselves also move between loads.
+
+Don't _depend_ on anything beyond what the spec promises — the data layer
+treats every non-2xx as a typed failure by status code alone and never
+parses an error body, and that's what keeps the origin swappable.
+
+Both halves of the API are live. Statistics are published, but
+`methodology.preliminary` is `true` with `minSample: 1`, so the figures
+carry a prominent caveat; see
+[`suppression-and-states.md`](./suppression-and-states.md). The
+statistics-absent mode is still fully supported, because that file can
+still 404.
 
 ## Configuration
 
@@ -97,11 +110,13 @@ changing one component, not redesigning the card table/detail layout.
    `https://cardgame-catalog-production.up.railway.app` — published by the
    game's own team, verified live (see "The catalog origin" above).
 2. ~~Has a catalog release actually been published, and under which
-   `catalogVersion`/`gameVersion`?~~ Yes: `0.1.0` for both, 176 cards,
-   served from that origin. The earlier `0.1.0-candidate.1`/`unreleased`
-   placeholders are no longer what's published.
-3. ~~Do card/deck statistics exist yet?~~ No, confirmed directly by the
-   owner. Plan the launch around card-browser-only.
+   `catalogVersion`/`gameVersion`?~~ **Moot as of 2026-10-28: the catalog is
+   no longer versioned.** `/data/cards.json` serves 176 cards with no
+   version field of any kind. Whether versioning returns is now spec §8
+   question 1.
+3. ~~Do card statistics exist yet?~~ Yes, as of 2026-10-28 — one flat,
+   unversioned, continuously recomputed win-rate file. Deck statistics
+   never shipped and are no longer in the contract.
 4. ~~Is there an image source for card art, separate from this API?~~ No —
    use a filler image for now (see above).
 5. ~~Where should the site be hosted, under which domain?~~ Vercel,
@@ -112,12 +127,18 @@ alongside the definition-of-done checklist.
 
 ## Release-time behavior to verify, not assume
 
-- The site must keep working, unmodified, through a stats release going
-  from "doesn't exist" to "exists" — i.e. the empty-state logic in
-  [`suppression-and-states.md`](./suppression-and-states.md) is the
-  mechanism that makes launching before stats exist safe, not a temporary
-  scaffold to remove later.
-- Because release files are cached essentially forever by release id (spec
-  §4.2), a new catalog or stats release must be picked up via the _index_
-  files changing (`latest.json`'s `cardsUrl`/`cardStatsUrl` pointing at a
-  new version), not by invalidating any site-side cache manually.
+- **There are no releases to pick up any more.** New card data appears when
+  `cards.json`'s bytes change, which the next conditional request sees as a
+  new `ETag`. Nothing site-side needs invalidating, and there is no index
+  pointer to watch.
+- The site must keep working, unmodified, if the statistics file goes from
+  "exists" to "404s" — the empty-state logic in
+  [`suppression-and-states.md`](./suppression-and-states.md) is a permanent
+  resilience property, not a temporary scaffold from before statistics
+  shipped. It was already load-bearing once, when the whole `/data/v1`
+  space disappeared.
+- **Expect no warning before the next breaking change.** No payload carries
+  a version field, so there is nothing to gate on. Each loader asserts the
+  shape it expects and resolves to an error state; that assertion is the
+  only thing standing between an upstream restructuring and a broken page
+  in a visitor's browser.

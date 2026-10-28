@@ -20,12 +20,15 @@ not as the sliced, batched releases the previous revision of this document
 specified. Deck statistics were never implemented and no longer appear in the
 contract at all.
 
-This section is the **only** place in this repository where `data/v1` should
-appear. If you are carrying a memory of the previous contract — slices by
-`tierGroup` × `matchType`, draw/keep/play rates, `stats/latest.json`,
-`?stats=<releaseId>` pinning, immutable release caching — all of it is gone.
-Everything below describes what the origin actually serves, verified by
-probing it.
+This section is the only place in this repository that **documents** the
+previous contract. Elsewhere, `data/v1` appears only in statements that it
+is gone, and in the one piece of code that sweeps its leftovers out of a
+returning visitor's `localStorage`. If you are carrying a memory of the old
+shape — slices by `tierGroup` × `matchType`, draw/keep/play rates,
+`stats/latest.json`, `?stats=<releaseId>` pinning, immutable release
+caching, deck statistics — all of it is gone, and the plumbing was deleted
+rather than left dormant. Everything below describes what the origin
+actually serves, verified by probing it.
 
 ---
 

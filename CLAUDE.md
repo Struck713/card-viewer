@@ -21,18 +21,34 @@ written out in `docs/`. Check there first.
   client-side fetches straight to `CATALOG_ORIGIN`. No API routes, no
   proxying, no server-side rendering of catalog data. See
   `docs/architecture.md`.
-- **Suppression.** A missing stat field means "not enough data," never `0`.
-  See `docs/suppression-and-states.md` — the spec itself calls this the rule
-  most likely to be gotten wrong.
-- **Stats may not exist yet.** The stats API (`/data/v1/stats/...`) is
-  contract-frozen but unpublished as of this writing — confirmed by
-  probing the live catalog origin, not assumed. The card browser must work
-  fully without it, and must keep working unchanged when stats appear. See
-  `docs/suppression-and-states.md` and `docs/deployment.md`.
+- **Suppression.** `winRate: null` means "not enough data," never `0`. And
+  **`winRate: 0` is a real value** — the card lost every game it was in —
+  sitting beside the nulls in every live response. Never `?? 0`, never
+  `|| 0`, and never sort a null as `0`. See
+  `docs/suppression-and-states.md`; the spec calls this the rule most
+  likely to be gotten wrong, and the 2026-10-28 API change made it more
+  load-bearing, not less.
+- **The API is flat and unversioned.** Three files: `/data/cards.json`,
+  `/data/keywords.json`, `/data/stats/card-winrates.json`. No index, no
+  release id, no versioned path, and no
+  `schemaVersion`/`catalogVersion`/`gameVersion` on any payload — the whole
+  `/data/v1/...` space was removed on 2026-10-28 and 404s. Don't
+  reintroduce version plumbing, a schema gate, slices (tier × match type),
+  `?stats=` pinning or deck statistics; all of it was deleted deliberately.
+  See the spec's §0.
+- **Statistics are published, and can still 404.** They're a live view, not
+  a batch release: `generatedAt` is a recompute clock that advances roughly
+  every 60 seconds even when no figure changes, so never present it as a
+  release or a publication date. The card browser must stay fully usable
+  when the file is absent. See `docs/suppression-and-states.md` and
+  `docs/deployment.md`.
+- **Nothing warns you about the next breaking change.** No payload carries
+  a version field, so each loader asserts the shape it expects and resolves
+  to an error state. Keep those assertions.
 - **The catalog API is external and not ours.** It's published and
   operated by the game's own team at
   `https://cardgame-catalog-production.up.railway.app`, and it implements
-  the spec's §4.4 transport contract (verified). This project hosts only
+  the spec's §4.2–§4.5 transport contract (verified). This project hosts only
   the site. Never commit catalog data into this repo, never add a local
   copy as a fallback or mirror, and never reach for a same-origin shortcut
   (relative fetches, reading files off disk in `lib/api/`) — the origin is
@@ -40,7 +56,7 @@ written out in `docs/`. Check there first.
   that knows it. Don't hardcode it anywhere, including as a fallback
   default, and specifically never use
   `https://cardgame-xi-orpin.vercel.app/`, which is the game's own web
-  client, a different Vercel project entirely (confirmed: `/data/v1` 404s
+  client, a different Vercel project entirely (confirmed: `/data/...` 404s
   there). See `docs/deployment.md`.
 - **No card art exists yet.** Use the shared placeholder component, not an
   `<img>` with a missing source. See `docs/architecture.md`.

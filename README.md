@@ -1,7 +1,7 @@
 # cardgame-viewer
 
 Public card-statistics website for the card game: a catalog browser plus
-win-rate/play-rate statistics once a stats release is published. Next.js
+per-card win-rate statistics. Next.js
 (App Router) + Tailwind, static hosting, client-side fetches straight to
 `CATALOG_ORIGIN` — no backend of this app's own at all.
 
@@ -24,10 +24,13 @@ API published by the game's own team
 anonymous and wildcard-CORS, so there's nothing to run locally to get real
 card data.
 
-The one case needing more: **the fixture server**, for exercising
-suppression/slice-absence/stats-published paths the real origin has no data
-for (`t_019`'s suppressed figures, `gen_str_001`'s slice absence,
-`rummage_on_death`'s null keyword mapping — see spec §6):
+The one case needing more: **the fixture server**, for the states the live
+origin won't produce on demand — statistics 404ing, `preliminary: false`,
+`t_019`'s suppressed `null` next to `gen_str_001`'s genuine `0%`,
+`cr_001t` having no statistics row at all, and `rummage_on_death`'s null
+keyword mapping (see spec §6). It also mirrors the real transport: an
+`ETag` with a working `304` on the catalog files, and none under
+`/data/stats/`.
 
 ```bash
 npm run dev:fixtures   # http://localhost:8081
@@ -58,4 +61,4 @@ not by this project.
 
 Don't confuse this site with `https://cardgame-xi-orpin.vercel.app/` — that
 is the game's own Godot web export, a different project entirely, and it
-does not serve `/data/v1/...`.
+does not serve `/data/...`.
