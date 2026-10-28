@@ -5,34 +5,63 @@ this game's card catalog and card-statistics API. It is self-contained: every
 schema the site consumes is written out below, so you do not need the game's
 source to build against it.
 
-Read §1 before planning anything — part of this API is published data you can
-rely on, and part of it does not exist yet.
+Read §1 and §0 before planning anything.
+
+---
+
+## 0. Revision history
+
+**2026-10-28 — the API was restructured. The entire `/data/v1/…` URL space is
+gone.** Every path under it now returns `404`. There is no index file, no
+release id, no `schemaVersion`/`catalogVersion`/`gameVersion` envelope on any
+payload, and no versioned path under any spelling. The statistics half is now
+*published* — but as a single flat, unversioned, continuously recomputed file,
+not as the sliced, batched releases the previous revision of this document
+specified. Deck statistics were never implemented and no longer appear in the
+contract at all.
+
+This section is the **only** place in this repository where `data/v1` should
+appear. If you are carrying a memory of the previous contract — slices by
+`tierGroup` × `matchType`, draw/keep/play rates, `stats/latest.json`,
+`?stats=<releaseId>` pinning, immutable release caching — all of it is gone.
+Everything below describes what the origin actually serves, verified by
+probing it.
 
 ---
 
 ## 1. What exists today
 
 The data source is a **static, anonymous, read-only JSON API**. No API key, no
-login, no query parameters, no per-card route, no database. Two separate
-release trains share one origin:
+login, no query parameters, no per-card route, no database. Three flat files
+share one origin, and all of them are live:
 
-| Data | URL space | Status |
+| Data | URL | Cache headers |
 |---|---|---|
-| Card catalog (printed card data) | `/data/v1/…` | **Built and tested**, candidate release prepared, **not deployed to a public domain yet** |
-| Card and deck statistics | `/data/v1/stats/…` | **Contract frozen, not implemented.** No release exists, so these URLs 404 today |
-| Health check | `/healthz` | Operator-only, not part of the data contract |
+| Card catalog | `GET /data/cards.json` | `no-cache`, **with** `ETag` |
+| Keywords | `GET /data/keywords.json` | `no-cache`, **with** `ETag` |
+| Card win rates | `GET /data/stats/card-winrates.json` | `no-cache`, **no** `ETag` |
+| Health check | `GET /healthz` | Operator-only, not part of the data contract |
+
+Anything else returns `404` with a JSON body: `{"error":"not found"}`.
 
 Consequences you must design around:
 
-1. **The origin is not known yet.** Take it from configuration
-   (`CATALOG_ORIGIN`), never hardcode a domain. Ask the owner for the real one.
-2. **The stats files may 404 for a while.** The site has to be useful with the
-   catalog alone, and must show an honest empty state ("statistics have not
-   been published yet") rather than an error page or zeros.
-3. **Statistics are published in batches, not live.** There is no realtime
-   feed, no per-match data, no player lookup. A release carries a
-   `generatedOn` date; show it.
-4. **There is no card art in this API** — art paths are deliberately not
+1. **The origin comes from configuration** (`CATALOG_ORIGIN`), never a
+   hardcoded domain.
+2. **Nothing is versioned, and nothing announces a breaking change.** No
+   payload carries a version field, so there is no schema gate to write and no
+   warning before the next restructuring — the one in §0 arrived unannounced.
+   Parse defensively: assert the shape you expect at the boundary and resolve
+   to an error state, rather than letting a changed payload reach the UI.
+3. **Statistics are a live view, not a batch publication.** There is no
+   realtime feed, no per-match data and no player lookup, but there is also no
+   snapshot: `generatedAt` advances on a roughly 60-second server-side
+   recompute, and the figures themselves move between loads. Two visitors a
+   minute apart can legitimately see different numbers.
+4. **The statistics file can still 404.** It is published today, but the site
+   must remain a fully useful card browser without it, showing an honest empty
+   state rather than an error page or zeros.
+5. **There is no card art in this API** — art paths are deliberately not
    exported. Build a text/type-based visual design, or ask the owner for an
    image source separately.
 
@@ -42,48 +71,29 @@ Consequences you must design around:
 CATALOG_ORIGIN   e.g. https://catalog.example.com   (required, no trailing slash)
 ```
 
-For local development the owner can run the catalog server from the game
-repository (`cd catalog && npm start`, Node ≥ 20, no dependencies) which serves
-the real card data at `http://localhost:8080`. Otherwise use the fixtures in §6.
-
-All URLs inside the API are **root-relative**. Always resolve them against the
-origin you fetched the index from:
+Every path is a fixed, literal constant — no payload returns a URL to resolve
+any more, so there is nothing to join against the origin beyond string
+concatenation:
 
 ```js
-const latest = await (await fetch(`${origin}/data/v1/latest.json`)).json();
-const cardsUrl = new URL(latest.cardsUrl, origin);
+const cards = await (await fetch(`${origin}/data/cards.json`)).json();
 ```
+
+For local development, serve the §6 fixtures instead of the live origin. That
+is the only way to exercise the statistics-404, no-published-row and
+`preliminary: false` paths, which the live origin cannot produce on demand.
 
 ## 3. The API
 
-### 3.1 Catalog index — `GET /data/v1/latest.json`
+### 3.1 Cards — `GET /data/cards.json`
 
-```json
-{
-  "schemaVersion": 1,
-  "catalogVersion": "0.1.0-candidate.1",
-  "gameVersion": "unreleased",
-  "cardsUrl": "/data/v1/releases/0.1.0-candidate.1/cards.json",
-  "keywordsUrl": "/data/v1/releases/0.1.0-candidate.1/keywords.json"
-}
-```
-
-- `schemaVersion` — the shape of these files. Changes only when the contract
-  changes, not when a card is rebalanced. **If it is not `1`, stop and show a
-  "this site needs updating" notice** rather than guessing.
-- `catalogVersion` — identifies immutable content. A release is write-once: a
-  correction ships as a new version, never as an edit.
-- `gameVersion` — which game release the content describes.
-
-### 3.2 Cards — `GET /data/v1/releases/<catalogVersion>/cards.json`
-
-Envelope (`schemaVersion`, `catalogVersion`, `gameVersion`) plus `cards`,
-sorted by `id`. The current candidate is 176 cards / ~82 KB — small enough to
-fetch once and filter in the browser, which is the intended pattern.
+`{ "cards": [...] }`, sorted by `id`. No envelope. Currently 176 cards /
+~82 KB — small enough to fetch once and filter in the browser, which is the
+intended pattern.
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | string | Stable across releases. The join key for statistics. |
+| `id` | string | Stable. The join key for statistics. |
 | `name` | string | |
 | `color` | `GREEN` `CRIMSON` `BLACK` `ORANGE` `TEAL` `GENERIC` | `GENERIC` is playable by every faction. |
 | `type` | `CREATURE` `STRATAGEM` `LOCATION` | |
@@ -94,20 +104,20 @@ fetch once and filter in the browser, which is the intended pattern.
 | `tribe` | string \| null | Current values: `bat` `mech` `monstrosity` `tank` `wolf` `yeti`. A tribe is **not** a keyword. |
 | `description` | string | Printed rules text, numbers already resolved. |
 | `abilities` | string[] | Ability keys as printed, e.g. `guardian`, `shielded_1`, `reinforce_4`. |
-| `collectible` | boolean | `false` for tokens/forms that are only in the release because a selected card references them. **Default every list and chart to `collectible: true`.** |
+| `collectible` | boolean | `false` for tokens/forms that are only in the file because a selected card references them. **Default every list and chart to `collectible: true`.** |
 | `isToken` | boolean | |
 | `isTransformForm` | boolean | Some card transforms into this one. |
-| `transformInto` | string \| null | Id within the same release. |
-| `transformChoices` | string[] | Ids within the same release. |
+| `transformInto` | string \| null | Id within the same file. |
+| `transformChoices` | string[] | Ids within the same file. |
 
-### 3.3 Keywords — `GET /data/v1/releases/<catalogVersion>/keywords.json`
+### 3.2 Keywords — `GET /data/keywords.json`
 
-Same envelope plus:
+No envelope. Two fields:
 
 - `keywords` — `[{ id, name, description }]`, the same text the game's tooltips
   use (currently 17).
 - `abilityKeywords` — a map from **every ability key that appears in
-  `cards.json`** to its keyword id, or `null` (currently 97 keys, 75 of them
+  `cards.json`** to its keyword id, or `null` (currently 98 keys, 76 of them
   `null`). Parameterised keys resolve through their base: `shielded_1` →
   `shielded`, `reinforce_4` → `reinforce`.
 
@@ -116,115 +126,96 @@ A `null` mapping is normal and permanent for now: those are mostly "On play…" 
 `description`. **Never render a raw ability key** like `rummage_on_death` as
 user-facing text — look it up, and fall back to the card's description.
 
-### 3.4 Statistics index — `GET /data/v1/stats/latest.json`
+### 3.3 Card win rates — `GET /data/stats/card-winrates.json`
 
 ```json
 {
-  "schemaVersion": 1,
-  "releaseId": "stats-1.0.0-r1",
-  "gameVersion": "1.0.0",
-  "catalogVersion": "0.1.0",
-  "cardStatsUrl": "/data/v1/stats/releases/stats-1.0.0-r1/card-stats.json",
-  "deckStatsUrl": "/data/v1/stats/releases/stats-1.0.0-r1/deck-stats.json"
-}
-```
-
-`catalogVersion` names the card release these ids resolve against. **Load that
-catalog release, not `latest.json`'s**, so names and costs match the statistics
-you are showing. If they differ, say so somewhere visible.
-
-### 3.5 Card statistics — `card-stats.json`
-
-```json
-{
-  "schemaVersion": 1,
-  "releaseId": "stats-1.0.0-r1",
-  "gameVersion": "1.0.0",
-  "generatedOn": "2026-11-07",
-  "method": {
-    "includes": "verified human-vs-human matches that finished or were conceded",
-    "minSample": 100,
-    "perAccountCap": 10,
-    "pairCap": 5,
-    "ratePrecision": "0.1 percentage points",
-    "sampleRounding": "down to nearest 10"
+  "generatedAt": "2026-10-28T03:11:27.525Z",
+  "methodology": {
+    "metric": "starting_deck_inclusion",
+    "modes": ["ranked_ai", "authoritative_pvp"],
+    "aiSeats": "both",
+    "copies": "once_per_player_game",
+    "rulesVersions": "combined",
+    "minSample": 1,
+    "preliminary": true,
+    "privacy": "No raw identities or deck lists. Small sample changes may reveal deck inclusion or outcomes."
   },
-  "slices": [
-    {
-      "tierGroup": "mid",
-      "matchType": "ranked",
-      "cards": [
-        {
-          "id": "g_001",
-          "matches": 1230,
-          "drawRate": 0.612,
-          "keepRate": 0.874,
-          "playRate": 0.541,
-          "winRateWhenDrawn": 0.527,
-          "winRateWhenKept": 0.538,
-          "winRateWhenPlayed": 0.561,
-          "n": { "drawn": 750, "kept": 650, "played": 660 }
-        }
-      ]
-    }
+  "cards": [
+    { "id": "b_001", "matches": 4, "wins": 3, "losses": 1, "winRate": 0.75 },
+    { "id": "t_019", "matches": 0, "wins": 0, "losses": 0, "winRate": null }
   ]
 }
 ```
 
-- `tierGroup` ∈ `low` `mid` `high` `legend`; `matchType` ∈ `ranked` `casual`
-  `campaign`. **That is the only slicing that exists** — do not build UI that
-  implies filtering by patch, region, date range, deck or player.
-- Rates are fractions in `[0, 1]`, 3 decimals. Render as percentages with one
-  decimal place at most; never claim more precision than `ratePrecision`.
-- `n.*` are the sample sizes behind the matching rates, **rounded down to the
-  nearest 10**. Treat them as approximate; do not recompute rates from them.
-- Read `method` from the file and show it. Do not hardcode `minSample: 100`:
-  it can change between releases.
-- Matches against AI, and any unverified match, never appear.
+- **There is no slicing.** No tier, no match type, no patch, no region, no date
+  range, no deck. One figure per card. Do not build UI implying otherwise.
+- **There is one metric,** `starting_deck_inclusion`: a card counts toward a
+  match when it was in a player's starting deck, once per player per game
+  however many copies the deck held. A win rate therefore describes *decks that
+  included the card*, not the card's own contribution. There are no
+  draw/keep/play rates.
+- `cards` covers the **collectible** cards only (currently 168 rows against 176
+  catalog cards; the 8 omitted are exactly the non-collectible transform
+  forms). A catalog card with no row is "no published data".
+- `wins + losses === matches` on every row, and `winRate === wins / matches`
+  exactly. The rate is a raw fraction at full float precision — `1`, not
+  `1.000` — so the **site** chooses display precision; the API no longer
+  publishes a precision hint.
+- `generatedAt` is **when the server last recomputed**, not a release date or a
+  publication timestamp. It advances on a roughly 60-second recompute even when
+  no figure changes. Show it, labelled as what it is ("Data as of…"), format it
+  to the minute so it doesn't churn, and never use it as a cache key or treat
+  it as an identifier for a fixed set of numbers.
+- Read `methodology` from the file and render it verbatim. **Do not hardcode
+  any of it** — `minSample` is `1` today and can change without notice.
+- `methodology.preliminary` is `true` today, and `minSample: 1` means a figure
+  can rest on a single game. Say so prominently; see §5.
+- **`modes` includes `ranked_ai` and `aiSeats` is `both`, so matches against AI
+  are counted.** A previous revision of this document asserted the opposite.
+  Do not repeat that claim.
 
-**Suppression — the rule most likely to be got wrong.** A figure that does not
-meet `minSample` after capping is **absent from the card's object**: the key is
-missing, not `0`, not `null`. A card with no qualifying figure is absent from
-the slice entirely.
+**Suppression — the rule most likely to be got wrong.** A figure the publisher
+will not stand behind has `winRate: null` (paired with `matches: 0`). Null
+means "not enough data". It is **never** `0`.
 
-So:
+**And zero is real.** `winRate: 0` with `matches > 0` means the card lost every
+game it was in — 59 of 168 rows were in that state when last sampled, sitting
+right beside 40 rows that were `null`. Both states occur in every live
+response, so this is not a theoretical rule:
 
-- Use `'winRateWhenPlayed' in card`, never `card.winRateWhenPlayed || 0`.
-- Render a missing figure as "–" or "not enough data", with a tooltip
-  explaining the minimum sample. Never as 0%, and never sort it as 0.
-- A card in the catalog but not in a slice is "no published data for this
-  slice", not "0% win rate". Make that visually distinct from a bad card.
-
-### 3.6 Deck statistics — `deck-stats.json`
-
-Same envelope; `slices[].decks[]` entries are keyed by faction pair only:
-
-```json
-{ "factions": ["GREEN", "TEAL"], "matches": 940, "winRate": 0.508 }
-```
-
-A single-faction deck has a one-element `factions`. There is never a card list,
-deck code or deck hash — by design, so do not build a "view this deck" feature.
+- Use an explicit null check. Never `card.winRate || 0`, never
+  `card.winRate ?? 0`.
+- Render a null as "–" or "not enough data", with the minimum sample
+  explained. Never as 0%, and **never sort it as 0** — a null must sort last in
+  both directions, or it will be ranked among the cards that genuinely lost
+  everything.
+- A card with no row at all is "no published data", not "0% win rate". Make
+  both visually distinct from a card that really did lose every game.
+- `matches`, `wins` and `losses` have **no** suppressed state. They are always
+  present, and `0` / `0–0` is a real "no games" — not "not enough data".
 
 ## 4. Client rules
 
 1. **Fetch once, index by `id`, filter locally.** There is no server-side
    filtering; `?query=` strings are ignored. All search, sort and filtering
    happens in the client over the arrays you already hold.
-2. **Caching.** Index files (`latest.json`) are `Cache-Control: no-cache` with
-   an `ETag`; release files are `public, max-age=31536000, immutable`. Send
-   `If-None-Match` and handle `304`. A release's bytes never change, so a
-   release file may be cached forever (localStorage/IndexedDB is fine; key it
-   by the release id).
-3. **CORS.** `Access-Control-Allow-Origin: *`, no credentials. Never send
-   cookies or auth headers; there is nothing to authenticate.
+2. **Caching.** Everything is `Cache-Control: no-cache`, so every load
+   revalidates and **nothing may be cached indefinitely.** `cards.json` and
+   `keywords.json` carry an `ETag`: send `If-None-Match` and handle `304`,
+   replaying a stored body. `card-winrates.json` carries **no** `ETag`, so it
+   cannot be conditionally revalidated at all — refetch it every time and store
+   nothing. It is ~10 KB, and caching a continuously recomputed file would pin
+   a visitor to numbers that have moved on.
+3. **CORS.** `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers:
+   If-None-Match`, `Access-Control-Expose-Headers: ETag`, no credentials. Never
+   send cookies or auth headers; there is nothing to authenticate.
 4. **Errors are real.** Unknown paths return a `404` with a JSON body (never a
-   fallback page); other methods return `405`. Handle every non-2xx explicitly:
-   a 404 on the stats index means "not published yet" (empty state), a 404 on a
-   release file named by an index means the API is inconsistent (show an error).
+   fallback page); other methods return `405`. Handle every non-2xx explicitly.
+   There is no index naming a file any more, so each 404 has exactly one
+   meaning: on `cards.json`/`keywords.json`, the catalog is not available at
+   this origin; on `card-winrates.json`, statistics are not published.
 5. **Methods.** `GET`, `HEAD`, `OPTIONS` only.
-6. **Pin when you link.** A shareable link to a statistic should carry the
-   release id so it keeps meaning after the next publish.
 
 TypeScript types to build against:
 
@@ -232,8 +223,6 @@ TypeScript types to build against:
 type Color = 'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
 type CardType = 'CREATURE' | 'STRATAGEM' | 'LOCATION';
 type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-type TierGroup = 'low' | 'mid' | 'high' | 'legend';
-type MatchType = 'ranked' | 'casual' | 'campaign';
 
 interface Card {
   id: string; name: string; color: Color; type: CardType; rarity: Rarity;
@@ -243,63 +232,81 @@ interface Card {
   transformInto: string | null; transformChoices: string[];
 }
 
-// Every statistic is OPTIONAL: an absent key means "suppressed, below minSample".
-interface CardStat {
-  id: string;
-  matches?: number;
-  drawRate?: number; keepRate?: number; playRate?: number;
-  winRateWhenDrawn?: number; winRateWhenKept?: number; winRateWhenPlayed?: number;
-  n?: { drawn?: number; kept?: number; played?: number };
+interface CardsResponse { cards: Card[] }
+interface KeywordsResponse {
+  keywords: { id: string; name: string; description: string }[];
+  abilityKeywords: Record<string, string | null>;
 }
 
-interface CardStatsSlice { tierGroup: TierGroup; matchType: MatchType; cards: CardStat[]; }
-interface DeckStat { factions: Color[]; matches?: number; winRate?: number; }
+interface StatsMethodology {
+  metric: string; modes: string[]; aiSeats: string; copies: string;
+  rulesVersions: string; minSample: number; preliminary: boolean;
+  privacy: string;
+}
+
+// All five keys are always present. winRate === null is suppression;
+// winRate === 0 is a REAL 0% and occurs in live data. Never conflate them.
+interface CardWinrate {
+  id: string; matches: number; wins: number; losses: number;
+  winRate: number | null;
+}
+
+interface CardWinratesResponse {
+  generatedAt: string; methodology: StatsMethodology; cards: CardWinrate[];
+}
 ```
 
 ## 5. What the website must do
 
 Minimum, in priority order:
 
-1. **Card table.** All collectible cards from the current catalog release, with
-   client-side search by name and description, and filters for color, type,
-   rarity, mana cost and tribe. Sortable columns, including the statistics
-   columns when a stats release is loaded.
-2. **Slice selector.** One `tierGroup` × `matchType` pair at a time, defaulting
-   to `mid` / `ranked`. The current slice must be obvious, and switching it
-   must not silently drop cards without saying why (see suppression).
-3. **Card detail.** Printed data, keyword explanations resolved through
-   `abilityKeywords`, every published figure for that card with its sample
-   size, and a clear statement when a figure is suppressed.
-4. **Faction win rates.** `deck-stats.json` as a readable comparison of faction
-   pairs, with sample sizes.
-5. **Provenance, always visible.** `gameVersion`, `catalogVersion`,
-   `releaseId`, `generatedOn`, and a methodology page that renders the `method`
-   block verbatim plus a plain-language explanation of capping and suppression.
-6. **Honest empty states.** No stats release → the site still works as a card
-   browser and says statistics are not published yet.
+1. **Card table.** All collectible cards, with client-side search by name and
+   description, and filters for color, type, rarity, mana cost and tribe.
+   Sortable columns, including the statistics columns once statistics load.
+2. **Card detail.** Printed data, keyword explanations resolved through
+   `abilityKeywords`, the card's win rate with its match count and win–loss
+   record, and a clear statement when the rate is suppressed.
+3. **Every rate beside its sample size.** With `minSample` as low as 1, a bare
+   percentage is misleading. A win rate must never appear without the count it
+   was computed from.
+4. **A preliminary notice, prominently.** While `methodology.preliminary` is
+   true, every page showing a statistic must say so and state `minSample` as
+   read from the payload. It should also note that AI matches are included,
+   since that surprises people.
+5. **Provenance, always visible.** `generatedAt` is the only provenance the API
+   publishes — show it wherever a statistic appears, labelled as a recompute
+   time rather than a release. Plus a methodology page rendering the
+   `methodology` block verbatim, with the site's own plain-language gloss kept
+   clearly separate from the published values.
+6. **Honest empty states.** No statistics file → the site still works as a card
+   browser and says statistics are not published.
 
 Quality bar: static hosting is enough (no backend, no server-side rendering
 needed); works at phone width; keyboard-navigable table; no layout shift when
 statistics load after cards; readable without colour alone (the factions are
 colour-named — label them in text too).
 
-## 6. Developing before the API is published
+## 6. Fixtures for local development
 
-Serve these fixtures from `/data/v1/...` locally and switch to `CATALOG_ORIGIN`
-later. They are deliberately minimal but schema-accurate; the shapes are what
-matter, including one card with suppressed figures.
+Serve these from `/data/...` locally and switch to `CATALOG_ORIGIN` later. They
+are deliberately minimal but schema-accurate; the shapes are what matter,
+including one card with a suppressed figure, **one card with a genuine 0% win
+rate**, and one card with no statistics row at all.
 
-`cards.json`:
+Mirror the live transport too: `no-cache` throughout, a content-hash `ETag`
+with a working `304` on the catalog files, and **no** `ETag` under
+`/data/stats/`.
+
+`data/cards.json`:
 
 ```json
 {
-  "schemaVersion": 1, "catalogVersion": "0.0.0-dev", "gameVersion": "dev",
   "cards": [
     { "id": "b_001", "name": "Garbage Addict", "color": "BLACK", "type": "CREATURE",
       "rarity": "COMMON", "manaCost": 3, "attack": 1, "health": 1, "tribe": null,
       "description": "On play: Rummage. On death: Rummage.",
       "abilities": ["rummage", "rummage_on_death"], "collectible": true,
-      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] },
+      "isToken": false, "isTransformForm": false, "transformInto": "cr_001t", "transformChoices": [] },
     { "id": "t_019", "name": "Serene Yeti", "color": "TEAL", "type": "CREATURE",
       "rarity": "EPIC", "manaCost": 4, "attack": 2, "health": 4, "tribe": "yeti",
       "description": "Ambush", "abilities": ["ambush"], "collectible": true,
@@ -307,17 +314,19 @@ matter, including one card with suppressed figures.
     { "id": "gen_str_001", "name": "Orbital Strike", "color": "GENERIC", "type": "STRATAGEM",
       "rarity": "RARE", "manaCost": 3, "attack": null, "health": null, "tribe": null,
       "description": "Deal 3 damage to any target.", "abilities": [], "collectible": true,
-      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] }
+      "isToken": false, "isTransformForm": false, "transformInto": null, "transformChoices": [] },
+    { "id": "cr_001t", "name": "Wretched Form", "color": "BLACK", "type": "CREATURE",
+      "rarity": "COMMON", "manaCost": 3, "attack": 3, "health": 1, "tribe": null,
+      "description": "Transformed form of Garbage Addict.", "abilities": [], "collectible": false,
+      "isToken": false, "isTransformForm": true, "transformInto": null, "transformChoices": [] }
   ]
 }
 ```
 
-`keywords.json` — `rummage_on_death` is a real example of the `null` mapping,
-so a card can carry one key that resolves and one that does not:
+`data/keywords.json`:
 
 ```json
 {
-  "schemaVersion": 1, "catalogVersion": "0.0.0-dev", "gameVersion": "dev",
   "keywords": [
     { "id": "ambush", "name": "Ambush", "description": "Cannot be targeted when played. Loses Ambush after it attacks." },
     { "id": "rummage", "name": "Rummage", "description": "Select a card of lesser value in your graveyard, then return it to your hand. It costs one less." }
@@ -326,45 +335,32 @@ so a card can carry one key that resolves and one that does not:
 }
 ```
 
-`stats/card-stats.json` — note `t_019` has a suppressed `winRateWhenPlayed`
-and `gen_str_001` is absent from the slice entirely:
+`data/stats/card-winrates.json` — note `t_019` is suppressed (`winRate: null`),
+`gen_str_001` has a **genuine 0%** that must never render as "not enough data",
+and `cr_001t` is absent entirely:
 
 ```json
 {
-  "schemaVersion": 1, "releaseId": "stats-0.0.0-dev", "gameVersion": "dev",
-  "generatedOn": "2026-10-24",
-  "method": { "includes": "verified human-vs-human matches that finished or were conceded",
-    "minSample": 100, "perAccountCap": 10, "pairCap": 5,
-    "ratePrecision": "0.1 percentage points", "sampleRounding": "down to nearest 10" },
-  "slices": [
-    { "tierGroup": "mid", "matchType": "ranked", "cards": [
-      { "id": "b_001", "matches": 1230, "drawRate": 0.612, "keepRate": 0.874, "playRate": 0.541,
-        "winRateWhenDrawn": 0.527, "winRateWhenKept": 0.538, "winRateWhenPlayed": 0.561,
-        "n": { "drawn": 750, "kept": 650, "played": 660 } },
-      { "id": "t_019", "matches": 300, "drawRate": 0.41, "winRateWhenDrawn": 0.492,
-        "n": { "drawn": 120 } }
-    ] }
+  "generatedAt": "2026-10-28T03:11:27.525Z",
+  "methodology": {
+    "metric": "starting_deck_inclusion",
+    "modes": ["ranked_ai", "authoritative_pvp"],
+    "aiSeats": "both",
+    "copies": "once_per_player_game",
+    "rulesVersions": "combined",
+    "minSample": 1,
+    "preliminary": true,
+    "privacy": "No raw identities or deck lists. Small sample changes may reveal deck inclusion or outcomes."
+  },
+  "cards": [
+    { "id": "b_001", "matches": 4, "wins": 3, "losses": 1, "winRate": 0.75 },
+    { "id": "t_019", "matches": 0, "wins": 0, "losses": 0, "winRate": null },
+    { "id": "gen_str_001", "matches": 2, "wins": 0, "losses": 2, "winRate": 0 }
   ]
 }
 ```
 
-`stats/deck-stats.json`:
-
-```json
-{
-  "schemaVersion": 1, "releaseId": "stats-0.0.0-dev", "gameVersion": "dev",
-  "generatedOn": "2026-10-24",
-  "method": { "includes": "verified human-vs-human matches that finished or were conceded",
-    "minSample": 100, "perAccountCap": 10, "pairCap": 5,
-    "ratePrecision": "0.1 percentage points", "sampleRounding": "down to nearest 10" },
-  "slices": [
-    { "tierGroup": "mid", "matchType": "ranked", "decks": [
-      { "factions": ["GREEN", "TEAL"], "matches": 940, "winRate": 0.508 },
-      { "factions": ["BLACK"], "matches": 410, "winRate": 0.473 }
-    ] }
-  ]
-}
-```
+Keep `generatedAt` fixed in fixtures. Never stamp a live clock into them.
 
 ## 7. Non-goals and hard limits
 
@@ -373,10 +369,18 @@ Do not build, and do not ask the API for:
 - Player profiles, leaderboards, match history, or anything per-account. The
   published data contains no player or match identifiers, by design and by an
   automated privacy scan on the publishing side.
-- Deck lists, deck codes or "top decks" — `deck-stats.json` is faction pairs
-  only.
-- Date-range, patch-over-time or region filters. Releases are snapshots; the
-  only history you have is older release ids.
+- Deck lists, deck codes, "top decks", or deck and faction statistics of any
+  kind. **Deck statistics do not exist** — not merely deck lists.
+- **Statistics the API does not publish, derived from the ones it does.** In
+  particular, do not aggregate card rows into a faction or colour win rate. The
+  metric counts player-games by starting-deck inclusion, so summing a faction's
+  cards counts the same game once per included card of that colour. The result
+  would be a fabricated number, and this is the trap most likely to be walked
+  into.
+- Slicing of any kind — by tier, match type, patch, region, date range or deck.
+  One figure per card is all there is.
+- Date-range or history views. There are no release ids and no snapshots; the
+  only thing you have is the current recompute.
 - Realtime or per-match feeds, webhooks, or writing anything back. The API is
   `GET`/`HEAD`/`OPTIONS` static JSON.
 - Scraping the game client, the game's relay server, or the game repository's
@@ -384,36 +388,56 @@ Do not build, and do not ask the API for:
   the raw files include internal effect data that is deliberately not public.
 - Inventing endpoints (`/cards/:id`, `?color=`, `/search`). They do not exist
   and will 404.
+- **Inventing identifiers the API doesn't publish.** There is no catalog
+  version, game version or stats release id anywhere. Do not substitute
+  `cards.json`'s `ETag` as a pseudo-version, and do not present `generatedAt`
+  as a release.
 
-## 8. Questions for the owner before launch
+## 8. Questions for the owner
 
-1. What is the public origin for `CATALOG_ORIGIN`?
-2. Has a catalog release been published, and with which `catalogVersion` /
-   `gameVersion`? (The prepared one is labelled `0.1.0-candidate.1` /
-   `unreleased` — placeholders, not a release.)
-3. Do card statistics exist yet? They are specified but not implemented, so
-   plan for the card-browser-only mode first.
+1. Will the catalog be versioned again? If so, under what scheme — the previous
+   `/data/v1/releases/<version>/…` plumbing was removed rather than left
+   dormant, so reintroducing it is real work.
+2. Can `card-winrates.json` get an `ETag`? Without one it cannot be
+   conditionally revalidated, which rules out a cheap refresh or polling
+   affordance later.
+3. `minSample: 1` with `preliminary: true` means roughly half the catalog can
+   show 100% or 0% from a single game. Is labelling it (current approach) the
+   right call, or should the site suppress below a threshold of its own?
 4. Is there an image source for card art? The API has none.
 5. Where should the site be hosted, and under which domain?
 
 ## 9. Definition of done
 
-- [ ] Loads `latest.json`, resolves release URLs against the configured origin,
-      and refuses politely on an unknown `schemaVersion`.
+- [ ] Loads the three flat files from the configured origin, and resolves a
+      changed payload shape to an error state rather than a crash.
 - [ ] Card table with search, the five filters, and sorting; defaults to
       collectible cards only.
 - [ ] Keyword text resolved through `abilityKeywords`, with the description
       fallback; no raw ability key ever shown to a user.
-- [ ] Statistics render per slice, with sample sizes, and suppressed figures
-      shown as "not enough data" — verified against a fixture where keys are
-      absent (a test, not a manual look).
-- [ ] A missing stats release yields a working card browser plus an honest
-      notice; a 404 on a release file named by an index yields a visible error.
-- [ ] Faction-pair win rates page.
-- [ ] Provenance (`gameVersion`, `catalogVersion`, `releaseId`, `generatedOn`)
-      visible on every page that shows a statistic, and a methodology page
-      rendering `method` verbatim.
-- [ ] Release files cached by release id; `If-None-Match` used for index files.
+- [ ] Win rates render with their match count and win–loss record. A `null`
+      rate shows as "not enough data" and a **genuine `0`** shows as `0.0%` —
+      verified against a fixture containing both (a test, not a manual look).
+- [ ] A `null` rate sorts last in **both** directions, with a genuine `0`
+      sorted as the real value it is — also a test.
+- [ ] A missing statistics file yields a working card browser plus an honest
+      notice.
+- [ ] The preliminary notice renders while `methodology.preliminary` is true,
+      with `minSample` read from the payload rather than hardcoded.
+- [ ] `generatedAt` visible on every page that shows a statistic, labelled as a
+      recompute time, and a methodology page rendering `methodology` verbatim.
+- [ ] `If-None-Match` used for the catalog files; the statistics file refetched
+      and never stored.
 - [ ] Works at phone width; table is keyboard-navigable.
 - [ ] No credentials, no cookies, no third-party analytics that receive card or
       query data without the owner's say-so.
+
+~~Faction-pair win rates page.~~ Struck: deck statistics do not exist in the
+API, and deriving them from card rows would be a fabricated number (§7).
+
+~~Provenance showing `gameVersion`, `catalogVersion` and `releaseId`.~~ Struck
+as unsatisfiable: the API publishes none of these.
+
+~~Refuses politely on an unknown `schemaVersion`; release files cached by
+release id; a 404 on a release file named by an index yields a visible error.~~
+Struck: there is no `schemaVersion`, no release id, and no index.
