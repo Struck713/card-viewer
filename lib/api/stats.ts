@@ -1,4 +1,4 @@
-import { fetchRevalidated } from './cache';
+import { fetchFresh } from './cache';
 import { HttpError, type StatsResult } from './errors';
 import type { CardWinrate, CardWinratesResponse } from './types';
 
@@ -17,7 +17,7 @@ function indexById(cards: CardWinrate[]): Map<string, CardWinrate> {
 export async function loadStats(origin: string): Promise<StatsResult> {
   let res: CardWinratesResponse;
   try {
-    res = await fetchRevalidated<CardWinratesResponse>(
+    res = await fetchFresh<CardWinratesResponse>(
       `${origin}/data/stats/card-winrates.json`,
     );
   } catch (error) {
@@ -25,6 +25,17 @@ export async function loadStats(origin: string): Promise<StatsResult> {
       return { status: 'not-published' };
     }
     return { status: 'network-error', error };
+  }
+
+  // The payload carries no version field of any kind, so there is nothing
+  // to gate on and no way to be warned of a breaking change — this very
+  // migration is the proof. A shape assertion is the cheapest defense:
+  // valid JSON of the wrong shape must not reach the UI as a crash.
+  if (!Array.isArray(res?.cards) || typeof res.generatedAt !== 'string') {
+    return {
+      status: 'network-error',
+      error: new Error('card-winrates.json did not match the expected shape'),
+    };
   }
 
   return {

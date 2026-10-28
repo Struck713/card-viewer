@@ -76,3 +76,39 @@ export async function fetchRevalidated<T>(url: string): Promise<T> {
   }
   return parseAndCache<T>(res, url, etagKey, bodyKey);
 }
+
+// No conditional request is possible for a file the origin serves without
+// an ETag (card-winrates.json), and storing its body would only burn quota
+// for a 304 that can never arrive. Fetch it fresh every time; it is ~10 KB,
+// and its numbers move continuously (see docs/data-contract.md rule #8).
+export async function fetchFresh<T>(url: string): Promise<T> {
+  const res = await fetchResponse(url);
+  if (!res.ok) {
+    throw new HttpError(url, res.status);
+  }
+  try {
+    return (await res.json()) as T;
+  } catch (error) {
+    throw new NetworkError(url, error);
+  }
+}
+
+// Returning visitors still hold keys from when release files were cached
+// forever under `cardgame-viewer:release:<releaseId>:<url>` — up to a full
+// cards.json body per release they ever saw. Nothing will ever read them
+// again, so sweep them once on load.
+function pruneLegacyCache(): void {
+  try {
+    const stale = Object.keys(localStorage).filter(
+      (key) =>
+        key.startsWith('cardgame-viewer:release:') ||
+        key.startsWith('cardgame-viewer:index-body:') ||
+        key.includes('/data/v1/'),
+    );
+    for (const key of stale) localStorage.removeItem(key);
+  } catch {
+    // ignore: private browsing / blocked storage. Dead keys are harmless.
+  }
+}
+
+pruneLegacyCache();
