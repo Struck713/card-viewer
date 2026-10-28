@@ -7,10 +7,9 @@ import { server } from './msw/server';
 import { navigationState, resetNavigation } from './helpers/navigation';
 
 // No real Next.js App Router is mounted under RTL/jsdom, so any component
-// using useSlice (next/navigation) needs this. It reads from the mutable
-// navigationState so tests can drive the URL; left alone it yields '/cards'
-// with no search params, which is what every test that doesn't care about
-// navigation relied on before.
+// reaching for next/navigation needs this. Nothing reads search params any
+// more now that the URL selects nothing, but next/link still wants a
+// router, and usePathname is kept so the mock stays a faithful stand-in.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: (url: string) => {

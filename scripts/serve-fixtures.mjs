@@ -1,12 +1,23 @@
-// Tiny zero-dependency static server for test/fixtures/, serving them under
-// the same /data/v1/... paths the real catalog API uses. Lets local dev
-// exercise the suppression/slice-absence/stats-published paths that the
-// real catalog origin has no data for at all.
+// Tiny zero-dependency static server for test/fixtures/, serving them at
+// the same flat /data/... paths the real catalog API uses, and mirroring
+// its transport closely enough to be worth developing against:
+//
+//   - everything is Cache-Control: no-cache, because nothing the real API
+//     serves is immutable any more;
+//   - /data/cards.json and /data/keywords.json carry a content-hash ETag
+//     and honour If-None-Match with a 304, as the real origin does;
+//   - /data/stats/... deliberately carries NO ETag, also as the real
+//     origin does, so local dev reproduces the fact that statistics can
+//     never be conditionally revalidated.
+//
+// Lets local dev exercise the paths the live origin can't produce on
+// demand: statistics 404ing, a card with no row, and preliminary: false.
 //
 // Usage: node scripts/serve-fixtures.mjs
 // Then: NEXT_PUBLIC_CATALOG_ORIGIN=http://localhost:8081
 
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +45,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(204, {
       ...headers,
       'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'If-None-Match',
     });
     res.end();
     return;
@@ -62,16 +74,27 @@ const server = http.createServer((req, res) => {
     );
     return;
   }
-  const isRelease = path
+  // Statistics get no ETag, matching the live origin — see the header
+  // comment. Everything else gets a content hash and a real 304.
+  const servesEtag = !path
     .relative(root, file)
     .split(path.sep)
-    .includes('releases');
+    .includes('stats');
+  const etag = servesEtag
+    ? `"${createHash('md5').update(readFileSync(file)).digest('hex')}"`
+    : null;
+
+  if (etag && req.headers['if-none-match'] === etag) {
+    res.writeHead(304, { ...headers, ETag: etag, 'Cache-Control': 'no-cache' });
+    res.end();
+    return;
+  }
+
   res.writeHead(200, {
     ...headers,
     'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': isRelease
-      ? 'public, max-age=31536000, immutable'
-      : 'no-cache',
+    'Cache-Control': 'no-cache',
+    ...(etag ? { ETag: etag } : {}),
   });
   if (req.method === 'HEAD') {
     res.end();

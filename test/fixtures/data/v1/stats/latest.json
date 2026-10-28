@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "releaseId": "stats-0.0.0-dev",
-  "gameVersion": "dev",
-  "catalogVersion": "0.0.0-dev",
-  "cardStatsUrl": "/data/v1/stats/releases/stats-0.0.0-dev/card-stats.json",
-  "deckStatsUrl": "/data/v1/stats/releases/stats-0.0.0-dev/deck-stats.json"
-}

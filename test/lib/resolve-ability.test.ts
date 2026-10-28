@@ -3,9 +3,7 @@ import { resolveAbility } from '../../lib/format/abilities';
 import type { KeywordsResponse } from '../../lib/api/types';
 import { readFixture } from '../helpers/fixtures';
 
-const keywords = readFixture<KeywordsResponse>(
-  'data/v1/releases/0.0.0-dev/keywords.json',
-);
+const keywords = readFixture<KeywordsResponse>('data/keywords.json');
 
 describe('resolveAbility', () => {
   it('resolves a known ability key to its keyword name and description', () => {

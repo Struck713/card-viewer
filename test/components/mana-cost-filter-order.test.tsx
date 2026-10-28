@@ -3,11 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/providers';
 import { CardsPageClient } from '../../app/cards/CardsPageClient';
-import type {
-  CardsResponse,
-  CatalogIndex,
-  KeywordsResponse,
-} from '../../lib/api/types';
+import type { CardsResponse, KeywordsResponse } from '../../lib/api/types';
 import { readFixture } from '../helpers/fixtures';
 import { registerStatsNotPublished } from '../helpers/handlers';
 import { server } from '../msw/server';
@@ -16,10 +12,7 @@ const ORIGIN = 'http://test.local'; // matches NEXT_PUBLIC_CATALOG_ORIGIN set in
 
 describe('mana cost filter option order', () => {
   it('sorts numerically, not lexicographically (10 after 2, not before)', async () => {
-    const index = readFixture<CatalogIndex>('data/v1/latest.json');
-    const base = readFixture<CardsResponse>(
-      'data/v1/releases/0.0.0-dev/cards.json',
-    );
+    const base = readFixture<CardsResponse>('data/cards.json');
     const withTenCost: CardsResponse = {
       ...base,
       cards: [
@@ -32,15 +25,12 @@ describe('mana cost filter option order', () => {
         },
       ],
     };
-    const keywords = readFixture<KeywordsResponse>(
-      'data/v1/releases/0.0.0-dev/keywords.json',
-    );
+    const keywords = readFixture<KeywordsResponse>('data/keywords.json');
     server.use(
-      http.get(`${ORIGIN}/data/v1/latest.json`, () => HttpResponse.json(index)),
-      http.get(`${ORIGIN}${index.cardsUrl}`, () =>
+      http.get(`${ORIGIN}/data/cards.json`, () =>
         HttpResponse.json(withTenCost),
       ),
-      http.get(`${ORIGIN}${index.keywordsUrl}`, () =>
+      http.get(`${ORIGIN}/data/keywords.json`, () =>
         HttpResponse.json(keywords),
       ),
     );

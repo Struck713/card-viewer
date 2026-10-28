@@ -11,7 +11,7 @@ import {
 const ORIGIN = 'http://test.local'; // matches NEXT_PUBLIC_CATALOG_ORIGIN set in test/setup.ts
 
 describe('stats-absent card browser', () => {
-  it('with stats/latest.json 404ing, the card table/filters/search/sort still work and show "not published"', async () => {
+  it('with the statistics file 404ing, the card table/filters/search/sort still work and show "not published"', async () => {
     registerCatalogHandlers(ORIGIN);
     registerStatsNotPublished(ORIGIN);
 
