@@ -67,6 +67,17 @@ always present, and `0` / `0–0` is a real "no games" — not "not enough
 data". Only `winRate` is ever suppressed, so the Record column still renders
 `0–0` for a card whose rate is null.
 
+**A rate never appears without its record.** `minSample` is 1, so a 100% can
+come from one game. The owner's call is to publish that rather than hide it
+(spec §8 question 3) — which is only defensible because the sample is
+visible beside it. So two rules follow, and both are tested:
+
+- Never render a win rate without its win–loss record.
+- Never add a client-side minimum sample. Suppressing below a threshold of
+  our own would mean the site disagreeing with the publisher about what is
+  publishable, and would hide real data from a reader who can already see
+  how thin it is.
+
 A card present in the catalog but with **no row at all** in the statistics
 file is "no published data". That is the collectible/non-collectible split:
 the file covers collectible cards, so a token or transform form reached

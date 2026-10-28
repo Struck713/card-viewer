@@ -45,6 +45,12 @@ written out in `docs/`. Check there first.
 - **Nothing warns you about the next breaking change.** No payload carries
   a version field, so each loader asserts the shape it expects and resolves
   to an error state. Keep those assertions.
+- **Never show a win rate without its win–loss record.** `minSample` is 1,
+  so a 100% can come from a single game. Publishing that is fine — the
+  owner confirmed it — _because_ the sample sits beside it. Equally, don't
+  add a client-side minimum sample: that would mean disagreeing with the
+  publisher about what's publishable, and hiding real data. Both halves are
+  covered by tests; see `docs/suppression-and-states.md`.
 - **The catalog API is external and not ours.** It's published and
   operated by the game's own team at
   `https://cardgame-catalog-production.up.railway.app`, and it implements

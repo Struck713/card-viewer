@@ -269,9 +269,14 @@ Minimum, in priority order:
 2. **Card detail.** Printed data, keyword explanations resolved through
    `abilityKeywords`, the card's win rate with its match count and win–loss
    record, and a clear statement when the rate is suppressed.
-3. **Every rate beside its sample size.** With `minSample` as low as 1, a bare
-   percentage is misleading. A win rate must never appear without the count it
-   was computed from.
+3. **Every rate beside its sample size — a hard requirement.** With
+   `minSample` as low as 1, a bare percentage is misleading. A win rate must
+   **never** appear without the win–loss record it was computed from. This is
+   what makes publishing a 100%-from-one-match figure honest, and it is the
+   reason the site does **not** suppress below a threshold of its own (§8
+   question 3): the sample is shown, so the reader can judge it. Removing or
+   hiding the record would silently turn an honest figure into a misleading
+   one, so it is covered by a test, not left to review.
 4. **A preliminary notice, prominently.** While `methodology.preliminary` is
    true, every page showing a statistic must say so and state `minSample` as
    read from the payload. It should also note that AI matches are included,
@@ -398,15 +403,27 @@ Do not build, and do not ask the API for:
 
 ## 8. Questions for the owner
 
-1. Will the catalog be versioned again? If so, under what scheme — the previous
-   `/data/v1/releases/<version>/…` plumbing was removed rather than left
-   dormant, so reintroducing it is real work.
-2. Can `card-winrates.json` get an `ETag`? Without one it cannot be
-   conditionally revalidated, which rules out a cheap refresh or polling
-   affordance later.
-3. `minSample: 1` with `preliminary: true` means roughly half the catalog can
-   show 100% or 0% from a single game. Is labelling it (current approach) the
-   right call, or should the site suppress below a threshold of its own?
+Resolved with the owner on 2026-10-28, and recorded here because each one
+was a live design question that is now settled — treat them as constraints,
+not as decisions to revisit:
+
+1. ~~Will the catalog be versioned again?~~ **No. There will be no catalog
+   versioning.** This is settled, not merely absent today, so the
+   unversioned flat paths are the permanent contract and the removed
+   `/data/v1/releases/<version>/…` plumbing is not coming back. Don't
+   reintroduce version fields, a schema gate, or release-addressed caching
+   in anticipation of it.
+2. ~~Can `card-winrates.json` get an `ETag`?~~ **Not needed.** The figures
+   can change at any moment, so the site should not be caching them
+   aggressively in the first place — refetching the whole ~10 KB file on
+   every load is the intended behaviour, not a workaround for a missing
+   header. The absence of an `ETag` happens to match what the data wants.
+3. ~~Should the site suppress below a threshold of its own?~~ **No.** A 100%
+   win rate from a single match is acceptable to publish, as long as the
+   sample is impossible to miss. That is what the win–loss record beside
+   every rate is for, plus the preliminary notice. Do not add a client-side
+   minimum — it would mean the site disagreeing with the publisher about
+   what is publishable, and it would hide real data.
 4. Is there an image source for card art? The API has none.
 5. Where should the site be hosted, and under which domain?
 

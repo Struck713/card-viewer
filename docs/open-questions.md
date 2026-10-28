@@ -29,19 +29,27 @@ revised — re-sync both when that happens.
 - [x] **Do card statistics exist yet?** Yes, as of 2026-10-28 — one flat,
       unversioned, continuously recomputed win-rate file. Deck statistics
       never shipped and are no longer in the contract at all.
-- [ ] **Will the catalog be versioned again, and under what scheme?** It is
-      unversioned today (`/data/cards.json`, no `catalogVersion`), and the
-      `/data/v1/releases/<version>/…` plumbing was **removed** rather than
-      left dormant — so reintroducing it is real work, not a config change.
-      That was an explicit, informed trade, not an oversight.
-- [ ] **Can `card-winrates.json` get an `ETag`?** Without one it cannot be
-      conditionally revalidated, so a refresh or polling affordance has no
-      cheap request available. The catalog files already send one.
-- [ ] **Is labelling preliminary data the right call?** `minSample: 1` with
-      `preliminary: true` means roughly half the catalog can show 100% or 0%
-      from a single game. The site currently shows the figures with a
-      prominent caveat and the match count beside every rate, rather than
-      suppressing below a threshold of its own. Confirm, or set a threshold.
+- [x] **Will the catalog be versioned again, and under what scheme?**
+      **No — confirmed by the owner: there will be no catalog versioning.**
+      So the unversioned flat paths are the permanent contract, not a
+      temporary state, and removing the `/data/v1/releases/<version>/…`
+      plumbing rather than leaving it dormant was the right call rather than
+      a trade. Don't reintroduce version fields, a schema gate or
+      release-addressed caching in anticipation of versioning returning.
+- [x] **Can `card-winrates.json` get an `ETag`?** **Not needed — confirmed
+      by the owner: the statistics shouldn't be aggressively cached anyway,
+      because they can change at any moment.** So refetching the whole
+      ~10 KB file every load is the intended behaviour, not a workaround for
+      a missing header, and the absent `ETag` matches what the data wants.
+      No upstream request to make.
+- [x] **Is labelling preliminary data the right call?** **Yes — confirmed
+      by the owner: a 100% win rate from a single match is fine to publish,
+      as long as the sample is apparent.** The win–loss record beside every
+      rate is what makes it apparent, backed by the preliminary notice. Do
+      **not** add a client-side minimum sample: it would mean the site
+      disagreeing with the publisher about what is publishable, and it would
+      hide real data. Treat "every rate appears beside its record" as a
+      standing requirement — spec §5.3 — not an incidental design choice.
 
 ## Definition of done (spec §9)
 
@@ -57,6 +65,9 @@ revised — re-sync both when that happens.
       test**, not a manual look.
 - [x] A `null` rate sorts last in **both** directions, with a genuine `0`
       sorted as the real value it is — also an automated test.
+- [x] **No win rate is ever rendered without its win–loss record**, and no
+      client-side minimum sample is applied — automated tests that fail if
+      the Record column is removed.
 - [x] A missing statistics file yields a working card browser plus an honest
       notice.
 - [x] The preliminary notice renders while `methodology.preliminary` is
