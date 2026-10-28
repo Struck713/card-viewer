@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1, "releaseId": "stats-0.0.0-dev-r2", "gameVersion": "dev",
+  "generatedOn": "2026-10-26",
+  "method": { "includes": "verified human-vs-human matches that finished or were conceded",
+    "minSample": 100, "perAccountCap": 10, "pairCap": 5,
+    "ratePrecision": "0.1 percentage points", "sampleRounding": "down to nearest 10" },
+  "slices": [
+    { "tierGroup": "mid", "matchType": "ranked", "cards": [
+      { "id": "b_001", "matches": 1480, "drawRate": 0.233, "keepRate": 0.311, "playRate": 0.197,
+        "winRateWhenDrawn": 0.284, "winRateWhenKept": 0.295, "winRateWhenPlayed": 0.302,
+        "n": { "drawn": 900, "kept": 780, "played": 790 } },
+      { "id": "t_019", "matches": 360, "drawRate": 0.178, "winRateWhenDrawn": 0.219,
+        "n": { "drawn": 150 } }
+    ] }
+  ]
+}

@@ -25,7 +25,7 @@ import type {
 } from '../../lib/api/types';
 import { useCatalog } from '../../lib/hooks/useCatalog';
 import { useSlice } from '../../lib/hooks/useSlice';
-import { useStats } from '../../lib/hooks/useStats';
+import { useDisplayCatalog, useStats } from '../../lib/hooks/useStats';
 
 const DEFAULT_FILTERS: FilterState = {
   color: 'all',
@@ -46,6 +46,10 @@ function compareNumbers(a: number, b: number): number {
 export function CardsPageClient() {
   const catalog = useCatalog();
   const { stats } = useStats();
+  // Card data rendered beside statistics comes from the catalog release the
+  // statistics describe (docs/data-contract.md rule #3); `catalog` stays
+  // the source of truth for the load/error gating below.
+  const displayCatalog = useDisplayCatalog();
   const slice = useSlice();
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -57,9 +61,10 @@ export function CardsPageClient() {
   // non-collectible tokens/forms only exist to be referenced from a
   // collectible card's detail page.
   const collectibleCards = useMemo(() => {
-    const allCards: Card[] = catalog.status === 'ok' ? catalog.data.cards : [];
+    const allCards: Card[] =
+      displayCatalog.status === 'ok' ? displayCatalog.data.cards : [];
     return allCards.filter((card) => card.collectible);
-  }, [catalog]);
+  }, [displayCatalog]);
 
   const options = useMemo(
     () => ({

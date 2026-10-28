@@ -61,3 +61,25 @@ as of the initial build. Still open: this site isn't deployed to Vercel yet
 ([`deployment.md`](./deployment.md)) — that's a manual step for the owner,
 not something this checklist item can self-certify. The catalog origin it
 will point at is already live.
+
+### Closed since: release pinning (spec §4.6)
+
+The nine boxes above were ticked while `?stats=<releaseId>` was only half
+built: `useSlice` parsed it and carried it into every link, but nothing
+loaded it, so a pinned link silently rendered whatever "latest" happened to
+be. That is now implemented end to end — see the Linking section of
+[`data-layer.md`](./data-layer.md) — along with `?catalog=`, without which a
+pinned release cannot say which catalog version it describes.
+
+Two things that were ticked but not fully substantiated are now covered by
+tests: the table-level half of `testing.md` §2 (`sortRows` placing a
+suppressed figure in the defined suppressed position, not just the
+`compareStat` comparator), and `useSlice`'s URL parsing/validation, which
+the global `next/navigation` mock in `test/setup.ts` previously made
+untestable.
+
+Also fixed while here: on a catalog/stats version mismatch, the pages
+rendered card names and costs from `catalog/latest.json` rather than from
+the release the statistics describe — a data-contract rule #3 violation that
+the provenance notice merely apologised for. `useDisplayCatalog()` is now
+what pages read.

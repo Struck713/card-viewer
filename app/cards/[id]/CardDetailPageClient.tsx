@@ -11,11 +11,14 @@ import { StatsStatusBanner } from '../../../components/empty-states/StatsStatusB
 import { ProvenanceBar } from '../../../components/provenance/ProvenanceBar';
 import { useCatalog } from '../../../lib/hooks/useCatalog';
 import { useSlice } from '../../../lib/hooks/useSlice';
-import { useStats } from '../../../lib/hooks/useStats';
+import { useDisplayCatalog, useStats } from '../../../lib/hooks/useStats';
 
 export function CardDetailPageClient({ id }: { id: string }) {
   const catalog = useCatalog();
   const { stats } = useStats();
+  // See CardsPageClient: printed data shown beside statistics must come
+  // from the release those statistics describe.
+  const displayCatalog = useDisplayCatalog();
   const slice = useSlice();
 
   if (catalog.status === 'loading') {
@@ -46,7 +49,9 @@ export function CardDetailPageClient({ id }: { id: string }) {
     );
   }
 
-  const card = catalog.data.cardsById.get(id);
+  const cards =
+    displayCatalog.status === 'ok' ? displayCatalog.data : catalog.data;
+  const card = cards.cardsById.get(id);
   if (!card) {
     return (
       <EmptyState
@@ -76,7 +81,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
       </Link>
       <ProvenanceBar />
       <PrintedData card={card} />
-      <Abilities card={card} keywords={catalog.data.keywords} />
+      <Abilities card={card} keywords={cards.keywords} />
       {hasTransforms && (
         <section className="text-sm">
           <h2 className="text-sm font-semibold text-neutral-700">Transforms</h2>
@@ -88,7 +93,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
                   href={`/cards/${card.transformInto}?${slice.toQueryString()}`}
                   className="underline"
                 >
-                  {catalog.data.cardsById.get(card.transformInto)?.name ??
+                  {cards.cardsById.get(card.transformInto)?.name ??
                     card.transformInto}
                 </Link>
               </li>
@@ -100,7 +105,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
                   href={`/cards/${choiceId}?${slice.toQueryString()}`}
                   className="underline"
                 >
-                  {catalog.data.cardsById.get(choiceId)?.name ?? choiceId}
+                  {cards.cardsById.get(choiceId)?.name ?? choiceId}
                 </Link>
               </li>
             ))}
