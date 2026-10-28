@@ -203,13 +203,19 @@ response, so this is not a theoretical rule:
 1. **Fetch once, index by `id`, filter locally.** There is no server-side
    filtering; `?query=` strings are ignored. All search, sort and filtering
    happens in the client over the arrays you already hold.
-2. **Caching.** Everything is `Cache-Control: no-cache`, so every load
-   revalidates and **nothing may be cached indefinitely.** `cards.json` and
-   `keywords.json` carry an `ETag`: send `If-None-Match` and handle `304`,
-   replaying a stored body. `card-winrates.json` carries **no** `ETag`, so it
-   cannot be conditionally revalidated at all — refetch it every time and store
-   nothing. It is ~10 KB, and caching a continuously recomputed file would pin
-   a visitor to numbers that have moved on.
+2. **No caching.** Everything is `Cache-Control: no-cache`, so every load
+   already revalidates on the origin's own terms. **Fetch all three files
+   fresh on every page load and store nothing client-side** — no
+   `If-None-Match`, no stored response body, nothing written to
+   `localStorage`. This is an explicit owner decision (approved by the
+   game's developer, 2026-10-28), not an oversight: `cards.json` and
+   `keywords.json` do carry an `ETag`, and the client deliberately does not
+   use it. A `304` there only ever saved bandwidth, not staleness — the
+   origin's `no-cache` meant nobody was ever served stale data — so don't
+   re-add `If-None-Match` as an optimization. `card-winrates.json` carries
+   **no** `ETag` and never has, so it was always refetched every load; that
+   half is unchanged. It is ~10 KB, and caching a continuously recomputed
+   file would pin a visitor to numbers that have moved on.
 3. **CORS.** `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers:
    If-None-Match`, `Access-Control-Expose-Headers: ETag`, no credentials. Never
    send cookies or auth headers; there is nothing to authenticate.
@@ -303,7 +309,10 @@ rate**, and one card with no statistics row at all.
 
 Mirror the live transport too: `no-cache` throughout, a content-hash `ETag`
 with a working `304` on the catalog files, and **no** `ETag` under
-`/data/stats/`.
+`/data/stats/`. The client never sends `If-None-Match` (rule 2 above), so
+the fixture server's `ETag`/`304` support exists only to prove that
+absence: a manual check against it should see every `/data/...` request
+land as a `200`, never a `304`.
 
 `data/cards.json`:
 
@@ -418,6 +427,11 @@ not as decisions to revisit:
    aggressively in the first place — refetching the whole ~10 KB file on
    every load is the intended behaviour, not a workaround for a missing
    header. The absence of an `ETag` happens to match what the data wants.
+   **Extended 2026-10-28 to the catalog too:** the owner got approval from
+   the game's developer for the site to hit the catalog API directly on
+   every load with nothing cached in between, so `cards.json`/
+   `keywords.json`'s `ETag` is now unused by the client for the same
+   reason — see rule 2 in §4.
 3. ~~Should the site suppress below a threshold of its own?~~ **No.** A 100%
    win rate from a single match is acceptable to publish, as long as the
    sample is impossible to miss. That is what the win–loss record beside
@@ -446,8 +460,8 @@ not as decisions to revisit:
       with `minSample` read from the payload rather than hardcoded.
 - [ ] `generatedAt` visible on every page that shows a statistic, labelled as a
       recompute time, and a methodology page rendering `methodology` verbatim.
-- [ ] `If-None-Match` used for the catalog files; the statistics file refetched
-      and never stored.
+- [ ] No `If-None-Match` sent for any file, no stored response bodies,
+      nothing written to `localStorage`.
 - [ ] Works at phone width; table is keyboard-navigable.
 - [ ] No credentials, no cookies, no third-party analytics that receive card or
       query data without the owner's say-so.
