@@ -1,16 +1,17 @@
-import type { Card, CardStat } from '../../lib/api/types';
-import { compareStat, type StatField } from '../../lib/format/suppression';
+import type { Card, CardWinrate } from '../../lib/api/types';
+import { compareMatches, compareWinRate } from '../../lib/format/suppression';
 
 export interface CardRow {
   card: Card;
-  // undefined when the card has no entry in the current slice ("no
-  // published data for this slice") or when stats aren't loaded at all —
-  // the Table distinguishes those two cases by its own statsLoaded prop.
-  stat: CardStat | undefined;
+  // undefined when the card has no row in the statistics file, or when
+  // statistics aren't loaded at all — the Table distinguishes those two
+  // cases by its own statsLoaded prop.
+  stat: CardWinrate | undefined;
 }
 
 export type StaticSortKey = 'name' | 'color' | 'type' | 'rarity' | 'manaCost';
-export type SortKey = StaticSortKey | StatField;
+export type StatSortKey = 'record' | 'winRate';
+export type SortKey = StaticSortKey | StatSortKey;
 export type SortDirection = 'asc' | 'desc';
 
 export const STATIC_COLUMNS: { key: StaticSortKey; label: string }[] = [
@@ -21,33 +22,35 @@ export const STATIC_COLUMNS: { key: StaticSortKey; label: string }[] = [
   { key: 'manaCost', label: 'Cost' },
 ];
 
-export const STAT_COLUMNS: { key: StatField; label: string }[] = [
-  { key: 'drawRate', label: 'Draw %' },
-  { key: 'keepRate', label: 'Keep %' },
-  { key: 'playRate', label: 'Play %' },
-  { key: 'winRateWhenDrawn', label: 'Win (drawn)' },
-  { key: 'winRateWhenKept', label: 'Win (kept)' },
-  { key: 'winRateWhenPlayed', label: 'Win (played)' },
+// Two columns, because the API publishes one rate per card. Record carries
+// the sample size inline (wins + losses === matches on every row the API
+// serves, verified), which is what makes a win rate honest when
+// methodology.minSample can be as low as 1.
+export const STAT_COLUMNS: { key: StatSortKey; label: string }[] = [
+  { key: 'record', label: 'Record' },
+  { key: 'winRate', label: 'Win %' },
 ];
 
-function isStatField(key: SortKey): key is StatField {
+function isStatKey(key: SortKey): key is StatSortKey {
   return STAT_COLUMNS.some((col) => col.key === key);
 }
 
-// A stat-column sort must respect the suppression rule just like rendering
-// does: a row with no entry for this card sorts exactly like a suppressed
-// figure (last in both directions), never as 0.
+// A win-rate sort must respect the suppression rule just like rendering
+// does: a card with no row, or with a null rate, sorts last in both
+// directions, never as 0 — which would bury it among the cards that
+// genuinely lost every game.
+//
+// Record sorts by match count instead, which has no suppressed state.
 export function sortRows(
   rows: CardRow[],
   key: SortKey,
   direction: SortDirection,
 ): CardRow[] {
   const sorted = [...rows];
-  if (isStatField(key)) {
-    const compare = compareStat(key, direction);
-    sorted.sort((a, b) =>
-      compare(a.stat ?? { id: a.card.id }, b.stat ?? { id: b.card.id }),
-    );
+  if (isStatKey(key)) {
+    const compare =
+      key === 'winRate' ? compareWinRate(direction) : compareMatches(direction);
+    sorted.sort((a, b) => compare(a.stat, b.stat));
     return sorted;
   }
   sorted.sort((a, b) => {

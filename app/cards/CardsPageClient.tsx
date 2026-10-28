@@ -10,22 +10,12 @@ import {
   type SortDirection,
   type SortKey,
 } from '../../components/card-table/columns';
-import { ApiInconsistent } from '../../components/empty-states/ApiInconsistent';
 import { EmptyState } from '../../components/empty-states/EmptyState';
-import { SchemaMismatch } from '../../components/empty-states/SchemaMismatch';
 import { StatsStatusBanner } from '../../components/empty-states/StatsStatusBanner';
 import { ProvenanceBar } from '../../components/provenance/ProvenanceBar';
-import { SliceSelector } from '../../components/slice-selector/SliceSelector';
-import type {
-  Card,
-  CardStat,
-  CardType,
-  Color,
-  Rarity,
-} from '../../lib/api/types';
+import type { Card, CardType, Color, Rarity } from '../../lib/api/types';
 import { useCatalog } from '../../lib/hooks/useCatalog';
-import { useSlice } from '../../lib/hooks/useSlice';
-import { useDisplayCatalog, useStats } from '../../lib/hooks/useStats';
+import { useStats } from '../../lib/hooks/useStats';
 
 const DEFAULT_FILTERS: FilterState = {
   color: 'all',
@@ -45,12 +35,7 @@ function compareNumbers(a: number, b: number): number {
 
 export function CardsPageClient() {
   const catalog = useCatalog();
-  const { stats } = useStats();
-  // Card data rendered beside statistics comes from the catalog release the
-  // statistics describe (docs/data-contract.md rule #3); `catalog` stays
-  // the source of truth for the load/error gating below.
-  const displayCatalog = useDisplayCatalog();
-  const slice = useSlice();
+  const stats = useStats();
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -61,10 +46,9 @@ export function CardsPageClient() {
   // non-collectible tokens/forms only exist to be referenced from a
   // collectible card's detail page.
   const collectibleCards = useMemo(() => {
-    const allCards: Card[] =
-      displayCatalog.status === 'ok' ? displayCatalog.data.cards : [];
+    const allCards: Card[] = catalog.status === 'ok' ? catalog.data.cards : [];
     return allCards.filter((card) => card.collectible);
-  }, [displayCatalog]);
+  }, [catalog]);
 
   const options = useMemo(
     () => ({
@@ -90,16 +74,6 @@ export function CardsPageClient() {
     [collectibleCards],
   );
 
-  const cardStatById = useMemo(() => {
-    if (stats.status !== 'ok') return null;
-    const found = slice.findSlice(stats.data.cardStats.slices);
-    const map = new Map<string, CardStat>();
-    for (const stat of found?.cards ?? []) {
-      map.set(stat.id, stat);
-    }
-    return map;
-  }, [stats, slice]);
-
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return collectibleCards.filter((card) => {
@@ -122,8 +96,12 @@ export function CardsPageClient() {
   }, [collectibleCards, filters, search]);
 
   const rows: CardRow[] = useMemo(
-    () => filtered.map((card) => ({ card, stat: cardStatById?.get(card.id) })),
-    [filtered, cardStatById],
+    () =>
+      filtered.map((card) => ({
+        card,
+        stat: stats.status === 'ok' ? stats.data.byId.get(card.id) : undefined,
+      })),
+    [filtered, stats],
   );
   const sortedRows = useMemo(
     () => sortRows(rows, sortKey, sortDirection),
@@ -151,12 +129,6 @@ export function CardsPageClient() {
       />
     );
   }
-  if (catalog.status === 'schema-mismatch') {
-    return <SchemaMismatch got={catalog.got} />;
-  }
-  if (catalog.status === 'inconsistent') {
-    return <ApiInconsistent url={catalog.url} />;
-  }
   if (catalog.status === 'network-error') {
     return (
       <EmptyState
@@ -170,11 +142,6 @@ export function CardsPageClient() {
   return (
     <div className="space-y-4">
       <ProvenanceBar />
-      <SliceSelector
-        tierGroup={slice.tierGroup}
-        matchType={slice.matchType}
-        onChange={slice.setSlice}
-      />
       <StatsStatusBanner stats={stats} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox value={search} onChange={setSearch} />
@@ -189,12 +156,6 @@ export function CardsPageClient() {
         sortKey={sortKey}
         sortDirection={sortDirection}
         onSort={handleSort}
-        linkQuery={slice.toQueryString()}
-        ratePrecision={
-          stats.status === 'ok'
-            ? stats.data.cardStats.method.ratePrecision
-            : undefined
-        }
       />
     </div>
   );

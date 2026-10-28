@@ -1,33 +1,28 @@
 'use client';
 
 import Link from 'next/link';
+import type { Card, CardWinrate } from '../../lib/api/types';
 import { CardArtPlaceholder } from '../card-art/CardArtPlaceholder';
-import { formatRate } from '../../lib/format/rates';
+import { formatRate, formatRecord } from '../../lib/format/rates';
 import { factionDisplay } from '../../lib/format/factions';
-import { isSuppressed, statValue } from '../../lib/format/suppression';
+import { isSuppressed, winRateValue } from '../../lib/format/suppression';
 import {
   STATIC_COLUMNS,
   STAT_COLUMNS,
   type CardRow,
   type SortDirection,
   type SortKey,
+  type StatSortKey,
 } from './columns';
 
 interface TableProps {
   rows: CardRow[];
-  // false => stats weren't loaded at all (not published / error); stat
-  // cells show that instead of the per-card "no data for this slice" case.
+  // false => statistics weren't loaded at all (not published / error);
+  // stat cells show that instead of the per-card "no published data" case.
   statsLoaded: boolean;
   sortKey: SortKey;
   sortDirection: SortDirection;
   onSort: (key: SortKey) => void;
-  // Appended to each row's /cards/[id] link so the current slice/release
-  // selection survives navigation (docs/data-layer.md §4.6).
-  linkQuery: string;
-  // method.ratePrecision from the loaded stats release — undefined when
-  // stats aren't loaded, in which case formatRate falls back to one
-  // decimal place.
-  ratePrecision?: string;
 }
 
 function SortButton({
@@ -55,14 +50,50 @@ function SortButton({
   );
 }
 
+// What a stat cell shows, in order of how much we know.
+//
+// Suppression applies to the win rate alone. A record of "0-0" is a known
+// fact (the card was in no games), not a missing one, so the Record column
+// still shows it — and a win rate is NEVER rendered as 0 just because it
+// is absent: a genuine winRate of 0 means the card lost every game it was
+// in, and 59 of 168 cards were in that state when last sampled. See
+// lib/format/suppression.ts.
+function StatCell({
+  columnKey,
+  card,
+  stat,
+  statsLoaded,
+}: {
+  columnKey: StatSortKey;
+  card: Card;
+  stat: CardWinrate | undefined;
+  statsLoaded: boolean;
+}) {
+  if (!statsLoaded) {
+    return <span className="text-neutral-500">Not published yet</span>;
+  }
+  if (!stat) {
+    return (
+      <span className="text-neutral-500" title={`No row for ${card.id}`}>
+        No published data
+      </span>
+    );
+  }
+  if (columnKey === 'record') {
+    return <>{formatRecord(stat.wins, stat.losses)}</>;
+  }
+  if (isSuppressed(stat)) {
+    return <span className="text-neutral-500">Not enough data</span>;
+  }
+  return <>{formatRate(winRateValue(stat) as number)}</>;
+}
+
 export function Table({
   rows,
   statsLoaded,
   sortKey,
   sortDirection,
   onSort,
-  linkQuery,
-  ratePrecision,
 }: TableProps) {
   return (
     <div className="overflow-x-auto">
@@ -105,7 +136,7 @@ export function Table({
                 </td>
                 <td className="py-2 pr-3">
                   <Link
-                    href={`/cards/${card.id}?${linkQuery}`}
+                    href={`/cards/${card.id}`}
                     className="font-medium hover:underline"
                   >
                     {card.name}
@@ -127,22 +158,12 @@ export function Table({
                 <td className="py-2 pr-3">{card.manaCost}</td>
                 {STAT_COLUMNS.map((col) => (
                   <td key={col.key} className="py-2 pr-3 whitespace-nowrap">
-                    {!statsLoaded ? (
-                      <span className="text-neutral-500">
-                        Not published yet
-                      </span>
-                    ) : !stat ? (
-                      <span className="text-neutral-500">
-                        No data for this slice
-                      </span>
-                    ) : isSuppressed(stat, col.key) ? (
-                      <span className="text-neutral-500">Not enough data</span>
-                    ) : (
-                      formatRate(
-                        statValue(stat, col.key) as number,
-                        ratePrecision,
-                      )
-                    )}
+                    <StatCell
+                      columnKey={col.key}
+                      card={card}
+                      stat={stat}
+                      statsLoaded={statsLoaded}
+                    />
                   </td>
                 ))}
               </tr>

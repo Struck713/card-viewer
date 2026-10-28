@@ -1,39 +1,25 @@
 import type { StatsState } from '../../lib/hooks/context';
-import { ApiInconsistent } from './ApiInconsistent';
+import { PreliminaryNotice } from '../provenance/PreliminaryNotice';
 import { EmptyState } from './EmptyState';
 import { NotPublishedYet } from './NotPublishedYet';
-import { SchemaMismatch } from './SchemaMismatch';
 
 interface StatsStatusBannerProps {
   stats: StatsState;
   compact?: boolean;
 }
 
-// One place that maps every non-'ok' StatsState to its empty/error state —
-// 'loading' and 'ok' render null since callers handle those two
-// differently per page (loading copy, and the actual stats content,
-// vary). Having every page hand-copy this four-way switch is exactly
-// what let one copy (CardsPageClient) silently drift and drop the
+// One place that maps every StatsState to the banner it deserves, so no
+// page has to remember the set. Having every page hand-copy this switch is
+// exactly what let one copy (CardsPageClient) silently drift and drop the
 // network-error case.
+//
+// Note 'ok' is no longer always null: when the publisher marks the data
+// preliminary it carries a caveat, and routing that through here means no
+// page showing a statistic can forget to display it.
 export function StatsStatusBanner({ stats, compact }: StatsStatusBannerProps) {
   switch (stats.status) {
     case 'not-published':
       return <NotPublishedYet compact={compact} />;
-    case 'pinned-not-found':
-      // Not the same as "no statistics published": the stats program may
-      // be alive and well — this particular link names a release that
-      // isn't there. Only the URL can fix it, so say which one.
-      return (
-        <EmptyState
-          tone="error"
-          title="That statistics release doesn't exist"
-          description={`This link is pinned to stats release "${stats.releaseId}", which could not be found. It may have been withdrawn, or the link may be wrong.`}
-        />
-      );
-    case 'schema-mismatch':
-      return <SchemaMismatch got={stats.got} />;
-    case 'inconsistent':
-      return <ApiInconsistent url={stats.url} />;
     case 'network-error':
       return (
         <EmptyState
@@ -42,6 +28,10 @@ export function StatsStatusBanner({ stats, compact }: StatsStatusBannerProps) {
           description="A network error occurred. Please try again."
         />
       );
+    case 'ok':
+      return stats.data.methodology.preliminary ? (
+        <PreliminaryNotice methodology={stats.data.methodology} />
+      ) : null;
     default:
       return null;
   }

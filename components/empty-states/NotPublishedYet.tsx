@@ -3,7 +3,7 @@ import { EmptyState } from './EmptyState';
 interface NotPublishedYetProps {
   // Use the compact form inline (a table cell, a stat row) where a full
   // boxed empty state would be too heavy; use the full form for whole
-  // sections/pages (e.g. all of /factions).
+  // sections (e.g. all of /methodology's content).
   compact?: boolean;
 }
 
@@ -14,7 +14,7 @@ export function NotPublishedYet({ compact = false }: NotPublishedYetProps) {
   return (
     <EmptyState
       title="Statistics have not been published yet"
-      description="The card browser still works fully. Check back after the next statistics release."
+      description="The statistics file could not be found at the catalog origin. The card browser still works fully."
     />
   );
 }
