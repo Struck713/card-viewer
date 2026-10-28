@@ -1,20 +1,15 @@
-// Mirrors stats-website-spec.md §3/§4 and docs/data-contract.md exactly.
+// Mirrors stats-website-spec.md §3 and docs/data-contract.md exactly.
 // Keep verbatim rather than re-deriving from JSON shapes at runtime.
+//
+// Both halves of the API are flat and unversioned: there is no index file,
+// no release id, and no schemaVersion/catalogVersion/gameVersion envelope
+// on any payload. Cards are identified only by the collection they arrive
+// in; statistics only by their generatedAt.
 
 export type Color =
   'GREEN' | 'CRIMSON' | 'BLACK' | 'ORANGE' | 'TEAL' | 'GENERIC';
 export type CardType = 'CREATURE' | 'STRATAGEM' | 'LOCATION';
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-export type TierGroup = 'low' | 'mid' | 'high' | 'legend';
-export type MatchType = 'ranked' | 'casual' | 'campaign';
-
-export interface CatalogIndex {
-  schemaVersion: number;
-  catalogVersion: string;
-  gameVersion: string;
-  cardsUrl: string;
-  keywordsUrl: string;
-}
 
 export interface Card {
   id: string;
@@ -36,9 +31,6 @@ export interface Card {
 }
 
 export interface CardsResponse {
-  schemaVersion: number;
-  catalogVersion: string;
-  gameVersion: string;
   cards: Card[];
 }
 
@@ -49,77 +41,41 @@ export interface Keyword {
 }
 
 export interface KeywordsResponse {
-  schemaVersion: number;
-  catalogVersion: string;
-  gameVersion: string;
   keywords: Keyword[];
   abilityKeywords: Record<string, string | null>;
 }
 
-export interface StatsIndex {
-  schemaVersion: number;
-  releaseId: string;
-  gameVersion: string;
-  catalogVersion: string; // load THIS catalog release, not latest.json's
-  cardStatsUrl: string;
-  deckStatsUrl: string;
-}
-
-export interface StatsMethod {
-  includes: string;
+// How the statistics were computed. Every field is free text or a raw
+// number meant to be rendered verbatim on the methodology page — none of
+// it is a machine-readable instruction to the client.
+export interface StatsMethodology {
+  metric: string;
+  modes: string[];
+  aiSeats: string;
+  copies: string;
+  rulesVersions: string;
   minSample: number;
-  perAccountCap: number;
-  pairCap: number;
-  ratePrecision: string;
-  sampleRounding: string;
+  preliminary: boolean;
+  privacy: string;
 }
 
-// Every rate/sample field is OPTIONAL. Absent = suppressed (below minSample).
-// Never default a missing field to 0.
-export interface CardStat {
+// winRate is null when the API suppresses the figure, which it pairs with
+// matches: 0. Null means "not enough data" — NEVER 0, and never sorted as
+// 0. This is the rule the spec calls the one most likely to be got wrong;
+// it moved from "the key is absent" to "the value is null", but it did not
+// go away. Route every read through lib/format/suppression.ts.
+export interface CardWinrate {
   id: string;
-  matches?: number;
-  drawRate?: number;
-  keepRate?: number;
-  playRate?: number;
-  winRateWhenDrawn?: number;
-  winRateWhenKept?: number;
-  winRateWhenPlayed?: number;
-  n?: { drawn?: number; kept?: number; played?: number };
+  matches: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
 }
 
-export interface CardStatsSlice {
-  tierGroup: TierGroup;
-  matchType: MatchType;
-  cards: CardStat[];
-}
-
-export interface CardStatsResponse {
-  schemaVersion: number;
-  releaseId: string;
-  gameVersion: string;
-  generatedOn: string; // ISO date
-  method: StatsMethod;
-  slices: CardStatsSlice[];
-}
-
-export interface DeckStat {
-  factions: Color[]; // length 1 for a mono-color deck
-  matches?: number;
-  winRate?: number;
-}
-
-export interface DeckStatsSlice {
-  tierGroup: TierGroup;
-  matchType: MatchType;
-  decks: DeckStat[];
-}
-
-export interface DeckStatsResponse {
-  schemaVersion: number;
-  releaseId: string;
-  gameVersion: string;
-  generatedOn: string;
-  method: StatsMethod;
-  slices: DeckStatsSlice[];
+export interface CardWinratesResponse {
+  generatedAt: string; // ISO timestamp
+  methodology: StatsMethodology;
+  // Covers the collectible cards only; a catalog card with no row here is
+  // "no published data", which renders the same as a suppressed figure.
+  cards: CardWinrate[];
 }
