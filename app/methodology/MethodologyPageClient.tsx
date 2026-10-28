@@ -5,11 +5,11 @@ import { MethodologyPanel } from '../../components/provenance/MethodologyPanel';
 import { ProvenanceBar } from '../../components/provenance/ProvenanceBar';
 import { useStats } from '../../lib/hooks/useStats';
 
-// Catalog provenance always shows (via ProvenanceBar, even when stats
-// aren't loaded); the method block and stats provenance show the empty
-// state when stats aren't published (docs/pages-and-components.md).
+// The methodology block is published inside the statistics file, so when
+// statistics aren't available there is nothing here to show but the empty
+// state (docs/pages-and-components.md).
 export function MethodologyPageClient() {
-  const { stats } = useStats();
+  const stats = useStats();
 
   return (
     <div className="space-y-6">
@@ -22,7 +22,7 @@ export function MethodologyPageClient() {
           )}
           <StatsStatusBanner stats={stats} />
           {stats.status === 'ok' && (
-            <MethodologyPanel method={stats.data.cardStats.method} />
+            <MethodologyPanel methodology={stats.data.methodology} />
           )}
         </div>
       </section>

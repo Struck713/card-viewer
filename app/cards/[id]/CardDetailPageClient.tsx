@@ -4,22 +4,15 @@ import Link from 'next/link';
 import { Abilities } from '../../../components/card-detail/Abilities';
 import { PrintedData } from '../../../components/card-detail/PrintedData';
 import { StatRows } from '../../../components/card-detail/StatRows';
-import { ApiInconsistent } from '../../../components/empty-states/ApiInconsistent';
 import { EmptyState } from '../../../components/empty-states/EmptyState';
-import { SchemaMismatch } from '../../../components/empty-states/SchemaMismatch';
 import { StatsStatusBanner } from '../../../components/empty-states/StatsStatusBanner';
 import { ProvenanceBar } from '../../../components/provenance/ProvenanceBar';
 import { useCatalog } from '../../../lib/hooks/useCatalog';
-import { useSlice } from '../../../lib/hooks/useSlice';
-import { useDisplayCatalog, useStats } from '../../../lib/hooks/useStats';
+import { useStats } from '../../../lib/hooks/useStats';
 
 export function CardDetailPageClient({ id }: { id: string }) {
   const catalog = useCatalog();
-  const { stats } = useStats();
-  // See CardsPageClient: printed data shown beside statistics must come
-  // from the release those statistics describe.
-  const displayCatalog = useDisplayCatalog();
-  const slice = useSlice();
+  const stats = useStats();
 
   if (catalog.status === 'loading') {
     return <p className="text-sm text-neutral-500">Loading…</p>;
@@ -33,12 +26,6 @@ export function CardDetailPageClient({ id }: { id: string }) {
       />
     );
   }
-  if (catalog.status === 'schema-mismatch') {
-    return <SchemaMismatch got={catalog.got} />;
-  }
-  if (catalog.status === 'inconsistent') {
-    return <ApiInconsistent url={catalog.url} />;
-  }
   if (catalog.status === 'network-error') {
     return (
       <EmptyState
@@ -49,23 +36,18 @@ export function CardDetailPageClient({ id }: { id: string }) {
     );
   }
 
-  const cards =
-    displayCatalog.status === 'ok' ? displayCatalog.data : catalog.data;
+  const cards = catalog.data;
   const card = cards.cardsById.get(id);
   if (!card) {
     return (
       <EmptyState
         title="Card not found"
-        description="This card id doesn't exist in the current catalog release."
+        description="This card id doesn't exist in the card catalog."
       />
     );
   }
 
-  const slice_ =
-    stats.status === 'ok'
-      ? slice.findSlice(stats.data.cardStats.slices)
-      : undefined;
-  const cardStat = slice_?.cards.find((entry) => entry.id === id);
+  const cardStat = stats.status === 'ok' ? stats.data.byId.get(id) : undefined;
   const hasTransforms =
     card.isTransformForm ||
     card.transformInto !== null ||
@@ -73,10 +55,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <Link
-        href={`/cards?${slice.toQueryString()}`}
-        className="text-sm text-neutral-600 hover:underline"
-      >
+      <Link href="/cards" className="text-sm text-neutral-600 hover:underline">
         ← Back to cards
       </Link>
       <ProvenanceBar />
@@ -90,7 +69,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
               <li>
                 Transforms into{' '}
                 <Link
-                  href={`/cards/${card.transformInto}?${slice.toQueryString()}`}
+                  href={`/cards/${card.transformInto}`}
                   className="underline"
                 >
                   {cards.cardsById.get(card.transformInto)?.name ??
@@ -101,10 +80,7 @@ export function CardDetailPageClient({ id }: { id: string }) {
             {card.transformChoices.map((choiceId) => (
               <li key={choiceId}>
                 Can transform into{' '}
-                <Link
-                  href={`/cards/${choiceId}?${slice.toQueryString()}`}
-                  className="underline"
-                >
+                <Link href={`/cards/${choiceId}`} className="underline">
                   {cards.cardsById.get(choiceId)?.name ?? choiceId}
                 </Link>
               </li>
@@ -118,14 +94,14 @@ export function CardDetailPageClient({ id }: { id: string }) {
           <StatsStatusBanner stats={stats} />
           {stats.status === 'ok' &&
             (cardStat ? (
-              <StatRows
-                stat={cardStat}
-                ratePrecision={stats.data.cardStats.method.ratePrecision}
-              />
+              <StatRows stat={cardStat} />
             ) : (
+              // Reachable for the non-collectible token and transform
+              // forms, which the statistics file has no row for — they are
+              // linked from a collectible card's Transforms section above.
               <EmptyState
-                title="No published data for this slice"
-                description="This card has no statistics in the selected tier/match-type slice."
+                title="No published data"
+                description="The statistics file has no row for this card."
               />
             ))}
         </div>

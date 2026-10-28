@@ -39,12 +39,6 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                 Cards
               </Link>
               <Link
-                href="/factions"
-                className="text-sm text-neutral-700 hover:underline"
-              >
-                Factions
-              </Link>
-              <Link
                 href="/methodology"
                 className="text-sm text-neutral-700 hover:underline"
               >
