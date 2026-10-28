@@ -30,10 +30,14 @@ origin won't produce on demand — statistics 404ing, `preliminary: false`,
 `cr_001t` having no statistics row at all, and `rummage_on_death`'s null
 keyword mapping (see spec §6). It also mirrors the real transport: an
 `ETag` with a working `304` on the catalog files, and none under
-`/data/stats/`. The client itself never sends `If-None-Match` (nothing is
-cached — see `docs/data-layer.md`), so this is only there for parity with
-the live origin, and to let a manual check prove the client doesn't send
-one.
+`/data/stats/`. The app's own code never sends `If-None-Match` (nothing is
+cached — see `docs/data-layer.md`), so this is mostly for parity with the
+live origin — though note that the _browser's_ own HTTP cache may still
+send a conditional request and get a real `304` from this server on a
+plain reload, independent of the app; that's the browser revalidating a
+`no-cache` resource on its own terms, not a regression. Disable the
+browser cache, or check that `localStorage` stays empty, to see what the
+app itself is doing.
 
 ```bash
 npm run dev:fixtures   # http://localhost:8081

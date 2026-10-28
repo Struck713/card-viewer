@@ -81,9 +81,11 @@ revised — re-sync both when that happens.
 - [x] `generatedAt` visible on every page that shows a statistic, labelled
       as a recompute time, and a methodology page rendering `methodology`
       verbatim.
-- [x] No `If-None-Match` sent for any file, no stored response bodies,
-      nothing written to `localStorage` — all three files refetched fresh
-      on every page load.
+- [x] The app's own code sends no `If-None-Match` for any file, stores no
+      response body, and writes nothing to `localStorage` — all three
+      files refetched fresh on every page load. (The browser's own HTTP
+      cache may still revalidate a `no-cache` resource on its own; that's
+      not the app caching anything.)
 - [x] Works at phone width; table is keyboard-navigable (native
       `<button>`/`<Link>` elements throughout — no custom click-only
       affordances).
