@@ -30,7 +30,10 @@ origin won't produce on demand — statistics 404ing, `preliminary: false`,
 `cr_001t` having no statistics row at all, and `rummage_on_death`'s null
 keyword mapping (see spec §6). It also mirrors the real transport: an
 `ETag` with a working `304` on the catalog files, and none under
-`/data/stats/`.
+`/data/stats/`. The client itself never sends `If-None-Match` (nothing is
+cached — see `docs/data-layer.md`), so this is only there for parity with
+the live origin, and to let a manual check prove the client doesn't send
+one.
 
 ```bash
 npm run dev:fixtures   # http://localhost:8081

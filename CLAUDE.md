@@ -64,6 +64,13 @@ written out in `docs/`. Check there first.
   `https://cardgame-xi-orpin.vercel.app/`, which is the game's own web
   client, a different Vercel project entirely (confirmed: `/data/...` 404s
   there). See `docs/deployment.md`.
+- **The site caches nothing, by agreement with the game's developer
+  (2026-10-28).** All three files are fetched fresh on every page load;
+  nothing is written to `localStorage`. `cards.json`/`keywords.json` do
+  carry an `ETag` — the client deliberately never sends `If-None-Match`
+  against it. Don't reintroduce `If-None-Match`, a `localStorage` body
+  store, SWR/React Query, or Next.js `revalidate`. See
+  `docs/data-layer.md`.
 - **No card art exists yet.** Use the shared placeholder component, not an
   `<img>` with a missing source. See `docs/architecture.md`.
 - **This site is hosted on Vercel** (owner-managed); the game's own Vercel

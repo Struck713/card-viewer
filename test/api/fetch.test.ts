@@ -58,7 +58,10 @@ describe('no caching', () => {
     server.use(
       http.get(`${ORIGIN}/data/cards.json`, () => {
         calls += 1;
-        return HttpResponse.json({ cards: [] }, { headers: { ETag: '"abc123"' } });
+        return HttpResponse.json(
+          { cards: [] },
+          { headers: { ETag: '"abc123"' } },
+        );
       }),
       http.get(`${ORIGIN}/data/keywords.json`, () =>
         HttpResponse.json({ keywords: [] }),

@@ -23,8 +23,8 @@ no version in any path, so each path is a literal constant.
 // lib/api/catalog.ts (shape, not full implementation)
 export async function loadCatalog(origin: string): Promise<CatalogResult> {
   const [cardsRes, keywordsRes] = await Promise.all([
-    fetchRevalidated<CardsResponse>(`${origin}/data/cards.json`),
-    fetchRevalidated<KeywordsResponse>(`${origin}/data/keywords.json`),
+    fetchJson<CardsResponse>(`${origin}/data/cards.json`),
+    fetchJson<KeywordsResponse>(`${origin}/data/keywords.json`),
   ]);
   return {
     status: 'ok',
@@ -41,47 +41,39 @@ Same shape for statistics: one fetch of `/data/stats/card-winrates.json`,
 indexed by card id at load time (`LoadedStats.byId`) because every consumer
 joins on it.
 
-## Caching
+## No caching
 
-Per spec §4.2. **Nothing is immutable and nothing is addressed by a release
-id**, so there is no forever-cache here — that was the previous contract.
+Per spec §4 rule 2. Everything is `Cache-Control: no-cache`, so every load
+already revalidates on the origin's own terms — there was never a reason to
+layer a second cache on top, and as of 2026-10-28 (owner-approved) the site
+doesn't: all three files are fetched fresh on every page load, and nothing
+is written to `localStorage`.
 
-- **Catalog files** (`cards.json`, `keywords.json`) are
-  `Cache-Control: no-cache` **with** an `ETag`. `fetchRevalidated()` sends
-  `If-None-Match` on repeat loads and handles a `304` by replaying a stored
-  body. This is the only caching the data layer does.
-- **The statistics file** carries **no `ETag`** and is recomputed
-  continuously, so it cannot be conditionally revalidated at all.
-  `fetchFresh()` refetches it every time and stores nothing. That is not a
-  compromise but the intended behaviour: the figures can change at any
-  moment, so caching them aggressively would pin a visitor to numbers that
-  have moved on. Don't add a cache here even if an `ETag` appears upstream.
+`cards.json` and `keywords.json` do carry an `ETag`, and the client
+deliberately ignores it — no `If-None-Match`, ever. A `304` there only ever
+saved bandwidth, not staleness, so don't re-add it as an optimization.
+`card-winrates.json` carries **no `ETag`** and is recomputed continuously;
+it was always refetched every load, so that half is unchanged.
 
 ```ts
-// lib/api/cache.ts (shape)
-export async function fetchRevalidated<T>(url: string): Promise<T> {
-  const etag = readEtag(url);
-  const res = await fetchResponse(
-    url,
-    etag ? { 'If-None-Match': etag } : undefined,
-  );
-  if (res.status === 304) return readBodyCache<T>(url)!;
-  const body = await res.json();
-  writeEtag(url, res.headers.get('ETag'));
-  writeBodyCache(url, body);
-  return body;
-}
-
-export async function fetchFresh<T>(url: string): Promise<T> {
-  // No ETag upstream, so nothing to revalidate and nothing to store.
-  return (await fetchResponse(url)).json();
+// lib/api/http.ts (shape)
+export async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { method: 'GET', credentials: 'omit' });
+  if (!res.ok) throw new HttpError(url, res.status);
+  return (await res.json()) as T;
 }
 ```
 
-Wrap all `localStorage` access in try/catch — private browsing or blocked
-storage must degrade to "just refetch," never throw and break the page.
-`cache.ts` also sweeps the dead `cardgame-viewer:release:` keys on load, so
-a returning visitor doesn't carry an old release body forever.
+`fetchJson()` is the one `fetch()` call site for both `catalog.ts` and
+`stats.ts` — no headers, no `cache` option, nothing stored.
+
+The one piece of client-side storage logic left is a one-shot sweep,
+`pruneLegacyStorage()` in `lib/api/legacy-storage.ts`, called from
+`app/providers.tsx`'s effect: it clears every `cardgame-viewer:*` key (the
+ETag/body pairs this change retires, plus older release-addressed keys from
+before the flat API) and anything mentioning `/data/v1/`, so a returning
+visitor's browser doesn't hold dead data forever. It's wrapped in try/catch
+— private browsing or blocked storage must degrade to a no-op, never throw.
 
 ## Error handling matrix
 

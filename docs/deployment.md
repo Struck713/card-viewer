@@ -129,9 +129,10 @@ alongside the definition-of-done checklist.
 ## Release-time behavior to verify, not assume
 
 - **There are no releases to pick up any more.** New card data appears when
-  `cards.json`'s bytes change, which the next conditional request sees as a
-  new `ETag`. Nothing site-side needs invalidating, and there is no index
-  pointer to watch.
+  `cards.json`'s bytes change; the client fetches it fresh on the very next
+  page load regardless, so there is nothing to invalidate and no index
+  pointer to watch. (The origin's `ETag` still changes too, but the client
+  doesn't look at it — see rule 2 in §4 of the spec.)
 - The site must keep working, unmodified, if the statistics file goes from
   "exists" to "404s" — the empty-state logic in
   [`suppression-and-states.md`](./suppression-and-states.md) is a permanent

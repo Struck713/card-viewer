@@ -61,11 +61,12 @@ tests, not manual checks, per the explicit instruction there
 8. **Shape assertion.** A payload that is valid JSON but the wrong shape
    resolves to an error state rather than reaching the UI. There is no
    version field to warn us, so this is the only guard.
-9. **Caching asymmetry.** A catalog reload sends `If-None-Match` and handles
-   a mocked `304` without re-parsing a body; two `loadStats` calls make two
-   network fetches and store nothing. The second half is the regression
-   guard against anyone reintroducing release-style caching on a
-   continuously recomputed endpoint.
+9. **No caching.** Two `loadCatalog` calls make two real network fetches,
+   neither carries an `if-none-match` header, and `localStorage` is empty
+   afterward; two `loadStats` calls likewise make two fetches with the
+   second `generatedAt` differing from the first. This is the inverted
+   guard — proving no cache exists — against anyone reintroducing
+   release-style caching or a stored body.
 10. **Preliminary notice.** It appears while `methodology.preliminary` is
     true and is absent when false, and it states `minSample` **as read from
     the payload** — assert with an overridden value, so a hardcoded "1"

@@ -41,7 +41,12 @@ revised — re-sync both when that happens.
       because they can change at any moment.** So refetching the whole
       ~10 KB file every load is the intended behaviour, not a workaround for
       a missing header, and the absent `ETag` matches what the data wants.
-      No upstream request to make.
+      No upstream request to make. **Extended 2026-10-28:** the owner got
+      the game's developer to approve the site hitting the catalog API
+      directly on every load too, so `cards.json`/`keywords.json`'s `ETag`
+      — which does exist — is now unused by the client for the same
+      reason. No caching anywhere in the data layer, by agreement rather
+      than by missing header.
 - [x] **Is labelling preliminary data the right call?** **Yes — confirmed
       by the owner: a 100% win rate from a single match is fine to publish,
       as long as the sample is apparent.** The win–loss record beside every
@@ -76,8 +81,9 @@ revised — re-sync both when that happens.
 - [x] `generatedAt` visible on every page that shows a statistic, labelled
       as a recompute time, and a methodology page rendering `methodology`
       verbatim.
-- [x] `If-None-Match` used for the catalog files; the statistics file
-      refetched and never stored.
+- [x] No `If-None-Match` sent for any file, no stored response bodies,
+      nothing written to `localStorage` — all three files refetched fresh
+      on every page load.
 - [x] Works at phone width; table is keyboard-navigable (native
       `<button>`/`<Link>` elements throughout — no custom click-only
       affordances).

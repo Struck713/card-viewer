@@ -27,7 +27,7 @@ fixtures for anything the real origin lacks).
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [`architecture.md`](./architecture.md)                     | Tech stack, rendering strategy, project layout                                              |
 | [`data-contract.md`](./data-contract.md)                   | Condensed endpoint reference + the non-negotiable rules (types live in `lib/api/types.ts`)  |
-| [`data-layer.md`](./data-layer.md)                         | Fetch/cache/error-handling design for the API client                                        |
+| [`data-layer.md`](./data-layer.md)                         | Fetch/no-caching/error-handling design for the API client                                   |
 | [`pages-and-components.md`](./pages-and-components.md)     | Route map and component breakdown against the spec's requirements                           |
 | [`suppression-and-states.md`](./suppression-and-states.md) | The suppression rule, empty states, error states — the parts most likely to be gotten wrong |
 | [`testing.md`](./testing.md)                               | Test strategy, required fixture-based tests                                                 |
