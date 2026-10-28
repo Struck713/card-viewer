@@ -58,9 +58,18 @@ it was always refetched every load, so that half is unchanged.
 ```ts
 // lib/api/http.ts (shape)
 export async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { method: 'GET', credentials: 'omit' });
+  let res: Response;
+  try {
+    res = await fetch(url, { method: 'GET', credentials: 'omit' });
+  } catch (error) {
+    throw new NetworkError(url, error);
+  }
   if (!res.ok) throw new HttpError(url, res.status);
-  return (await res.json()) as T;
+  try {
+    return (await res.json()) as T;
+  } catch (error) {
+    throw new NetworkError(url, error);
+  }
 }
 ```
 
