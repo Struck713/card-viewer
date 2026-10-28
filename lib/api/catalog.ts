@@ -28,6 +28,18 @@ export async function loadCatalog(origin: string): Promise<CatalogResult> {
     return { status: 'network-error', error };
   }
 
+  // No payload carries a version field, so there is no gate and no warning
+  // before a breaking change. Assert the shape instead — see stats.ts.
+  if (
+    !Array.isArray(cardsRes?.cards) ||
+    !Array.isArray(keywordsRes?.keywords)
+  ) {
+    return {
+      status: 'network-error',
+      error: new Error('catalog files did not match the expected shape'),
+    };
+  }
+
   return {
     status: 'ok',
     data: {
