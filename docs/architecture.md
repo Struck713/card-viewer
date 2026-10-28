@@ -66,8 +66,8 @@ lib/
     config.ts                # CATALOG_ORIGIN resolution
     catalog.ts                # /data/cards.json + /data/keywords.json fetcher
     stats.ts                  # /data/stats/card-winrates.json fetcher
-    cache.ts                  # ETag/If-None-Match revalidation; no forever-cache
-    http.ts                   # the single fetch() call site
+    http.ts                   # the single fetch() call site: fetchJson(), no caching
+    legacy-storage.ts          # one-shot sweep of a returning visitor's dead localStorage keys
     types.ts                  # TypeScript types mirroring the schema (see data-contract.md)
     errors.ts                 # typed result unions + HttpError/NetworkError
   hooks/
@@ -124,7 +124,7 @@ are the only way to see those paths.
 
 Resist adding: a server-side proxy, a database, user accounts, analytics that
 forward query/card data to a third party without sign-off (explicitly
-disallowed, definition of done's last line), or a CMS. Nothing in the spec
-calls for persistence beyond per-viewer `localStorage` revalidation of the
-two catalog files, and even that is just an `ETag` plus a body to replay on
-a 304.
+disallowed, definition of done's last line), or a CMS. The site now keeps
+zero client-side persistence (2026-10-28, see spec §4 rule 2): no
+`localStorage` cache, no SWR/React Query, no Next.js `revalidate`.
+`legacy-storage.ts`'s one-shot sweep is cleanup, not a cache.
