@@ -1,14 +1,17 @@
 import { HttpError, NetworkError } from './errors';
-import { fetchJson, fetchResponse } from './fetchJson';
+import { fetchResponse } from './http';
 
-// Per docs/data-layer.md: index files (latest.json) are no-cache + ETag, so
-// every load revalidates; release files are immutable forever and cached by
-// release id. All storage access is wrapped in try/catch — private
-// browsing or blocked storage degrades to "just refetch", never throws.
+// Every file the API serves is `Cache-Control: no-cache`, so every load
+// revalidates; cards.json and keywords.json carry an ETag, card-winrates
+// .json does not (it just always takes the 200 path). Nothing is immutable
+// and nothing is addressed by a release id, so there is no forever-cache
+// here — only a stored body to replay on a 304.
+//
+// All storage access is wrapped in try/catch: private browsing or blocked
+// storage degrades to "just refetch", never throws.
 
 const ETAG_PREFIX = 'cardgame-viewer:etag:';
-const INDEX_BODY_PREFIX = 'cardgame-viewer:index-body:';
-const RELEASE_PREFIX = 'cardgame-viewer:release:';
+const BODY_PREFIX = 'cardgame-viewer:body:';
 
 function safeGet(key: string): string | null {
   try {
@@ -26,7 +29,7 @@ function safeSet(key: string, value: string): void {
   }
 }
 
-async function parseAndCacheIndex<T>(
+async function parseAndCache<T>(
   res: Response,
   url: string,
   etagKey: string,
@@ -44,9 +47,11 @@ async function parseAndCacheIndex<T>(
   return body;
 }
 
-export async function fetchIndexFile<T>(url: string): Promise<T> {
+// Conditional GET with an If-None-Match when we have a stored ETag, and a
+// stored body to serve the resulting 304 from.
+export async function fetchRevalidated<T>(url: string): Promise<T> {
   const etagKey = ETAG_PREFIX + url;
-  const bodyKey = INDEX_BODY_PREFIX + url;
+  const bodyKey = BODY_PREFIX + url;
   const etag = safeGet(etagKey);
   const res = await fetchResponse(
     url,
@@ -64,28 +69,10 @@ export async function fetchIndexFile<T>(url: string): Promise<T> {
     }
     const fresh = await fetchResponse(url);
     if (!fresh.ok) throw new HttpError(url, fresh.status);
-    return parseAndCacheIndex<T>(fresh, url, etagKey, bodyKey);
+    return parseAndCache<T>(fresh, url, etagKey, bodyKey);
   }
   if (!res.ok) {
     throw new HttpError(url, res.status);
   }
-  return parseAndCacheIndex<T>(res, url, etagKey, bodyKey);
-}
-
-export async function fetchReleaseFile<T>(
-  url: string,
-  releaseKey: string,
-): Promise<T> {
-  const key = `${RELEASE_PREFIX}${releaseKey}:${url}`;
-  const cached = safeGet(key);
-  if (cached) {
-    try {
-      return JSON.parse(cached) as T;
-    } catch {
-      // corrupted cache entry: fall through to a refetch
-    }
-  }
-  const body = await fetchJson<T>(url);
-  safeSet(key, JSON.stringify(body));
-  return body;
+  return parseAndCache<T>(res, url, etagKey, bodyKey);
 }
