@@ -73,7 +73,13 @@ tests, not manual checks, per the explicit instruction there
 11. **Provenance.** `generatedAt` renders, to the minute, with the raw ISO
     value in the markup, and is not labelled as a release or a publication
     date.
-12. **Default filters.** The card table's initial render includes only
+12. **A rate never appears without its sample.** Every rendered win rate has
+    a win–loss record in the same row; the card detail page shows matches and
+    the record beside the rate; and a 1-match 100% is **shown**, not
+    suppressed by a threshold of our own. This is what makes publishing a
+    single-game figure honest (spec §8 question 3), so it is tested rather
+    than left to review — the tests fail if the Record column is removed.
+13. **Default filters.** The card table's initial render includes only
     `collectible: true` cards.
 
 A free guard worth knowing about: handlers are registered only at the flat

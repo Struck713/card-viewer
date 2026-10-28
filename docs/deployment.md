@@ -51,9 +51,10 @@ rather than reading the contract:
 
 - **The statistics file sends no `ETag`**, so it cannot be conditionally
   revalidated. The data layer refetches it every load and stores nothing
-  (see [`data-layer.md`](./data-layer.md)). Asking the game's team to add
-  one is the single highest-value upstream request here — the catalog files
-  already have one.
+  (see [`data-layer.md`](./data-layer.md)). That is the behaviour we want
+  regardless: the owner's position is that the figures can change at any
+  moment and should not be cached aggressively, so there is no upstream
+  request to make here.
 - **`generatedAt` advances on a ~60-second recompute even when no figure
   changes.** Sampled five times over 80 seconds: it moved 03:10:26 →
   03:11:27 while total matches, zero count and null count were identical

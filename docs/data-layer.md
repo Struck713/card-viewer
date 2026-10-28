@@ -53,9 +53,9 @@ id**, so there is no forever-cache here — that was the previous contract.
 - **The statistics file** carries **no `ETag`** and is recomputed
   continuously, so it cannot be conditionally revalidated at all.
   `fetchFresh()` refetches it every time and stores nothing. That is not a
-  compromise: there is no 304 that could ever arrive to read a stored body
-  back, and caching a live endpoint would pin a visitor to numbers that have
-  moved on.
+  compromise but the intended behaviour: the figures can change at any
+  moment, so caching them aggressively would pin a visitor to numbers that
+  have moved on. Don't add a cache here even if an `ETag` appears upstream.
 
 ```ts
 // lib/api/cache.ts (shape)
@@ -141,6 +141,6 @@ is why there is no Suspense boundary around the providers: the previous
 `?tier=`/`?match=`/`?stats=`/`?catalog=` plumbing forced one to keep the
 static shell prerendering, and removing the params removed the problem.
 
-If versioning ever returns upstream, re-read spec §8 question 1 first — the
-plumbing was removed rather than left dormant, so this is a rebuild, not a
-flag.
+**The catalog will not be versioned again** — settled with the owner, not
+just absent today (spec §8 question 1). So don't keep a dormant hook for it,
+and don't reach for `?`-params to select data that has only one version.
