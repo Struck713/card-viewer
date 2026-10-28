@@ -41,6 +41,30 @@ describe('loadCatalog', () => {
     );
     expect((await loadCatalog(ORIGIN)).status).toBe('network-error');
   });
+
+  it('a 500 is a network error, never conflated with "not deployed"', async () => {
+    server.use(
+      http.get(`${ORIGIN}/data/cards.json`, () =>
+        HttpResponse.text('', { status: 500 }),
+      ),
+      http.get(`${ORIGIN}/data/keywords.json`, () =>
+        HttpResponse.json({ keywords: [] }),
+      ),
+    );
+    expect((await loadCatalog(ORIGIN)).status).toBe('network-error');
+  });
+
+  it('a non-JSON 200 body is a network error, not a crash', async () => {
+    server.use(
+      http.get(`${ORIGIN}/data/cards.json`, () =>
+        HttpResponse.text('not json'),
+      ),
+      http.get(`${ORIGIN}/data/keywords.json`, () =>
+        HttpResponse.json({ keywords: [] }),
+      ),
+    );
+    expect((await loadCatalog(ORIGIN)).status).toBe('network-error');
+  });
 });
 
 describe('loadStats', () => {
@@ -67,6 +91,24 @@ describe('loadStats', () => {
     server.use(
       http.get(`${ORIGIN}/data/stats/card-winrates.json`, () =>
         HttpResponse.json({ generatedAt: 'x' }),
+      ),
+    );
+    expect((await loadStats(ORIGIN)).status).toBe('network-error');
+  });
+
+  it('a 500 is a network error, never conflated with "not published"', async () => {
+    server.use(
+      http.get(`${ORIGIN}/data/stats/card-winrates.json`, () =>
+        HttpResponse.text('', { status: 500 }),
+      ),
+    );
+    expect((await loadStats(ORIGIN)).status).toBe('network-error');
+  });
+
+  it('a non-JSON 200 body is a network error, not a crash', async () => {
+    server.use(
+      http.get(`${ORIGIN}/data/stats/card-winrates.json`, () =>
+        HttpResponse.text('not json'),
       ),
     );
     expect((await loadStats(ORIGIN)).status).toBe('network-error');

@@ -309,10 +309,18 @@ rate**, and one card with no statistics row at all.
 
 Mirror the live transport too: `no-cache` throughout, a content-hash `ETag`
 with a working `304` on the catalog files, and **no** `ETag` under
-`/data/stats/`. The client never sends `If-None-Match` (rule 2 above), so
-the fixture server's `ETag`/`304` support exists only to prove that
-absence: a manual check against it should see every `/data/...` request
-land as a `200`, never a `304`.
+`/data/stats/`. The app's own code never sends `If-None-Match` (rule 2
+above) — `fetchJson()` takes no conditional-request headers at all — so
+the fixture server's `ETag`/`304` support exists only to prove *that*: it
+still lets you confirm `localStorage` stays empty across reloads, and that
+disabling the browser's own HTTP cache (DevTools → Network → "Disable
+cache", or a hard reload) still shows `200`s with no app-level validator.
+Don't expect a plain reload's Network panel to show only `200`s on the
+catalog files: the *browser's own* HTTP cache will transparently add its
+own conditional header for a `no-cache` resource it already has an `ETag`
+for, independent of anything `fetchJson()` does, and the fixture server
+will answer that with a real `304` — that's the browser revalidating on
+its own terms, not the app caching anything.
 
 `data/cards.json`:
 
@@ -460,8 +468,9 @@ not as decisions to revisit:
       with `minSample` read from the payload rather than hardcoded.
 - [ ] `generatedAt` visible on every page that shows a statistic, labelled as a
       recompute time, and a methodology page rendering `methodology` verbatim.
-- [ ] No `If-None-Match` sent for any file, no stored response bodies,
-      nothing written to `localStorage`.
+- [ ] The app's own code sends no `If-None-Match` for any file, stores no
+      response body, and writes nothing to `localStorage` (the browser's
+      own HTTP cache may still revalidate on its own — that's not this).
 - [ ] Works at phone width; table is keyboard-navigable.
 - [ ] No credentials, no cookies, no third-party analytics that receive card or
       query data without the owner's say-so.

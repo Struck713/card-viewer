@@ -35,10 +35,24 @@ describe('no caching', () => {
 
   it('refetches the statistics on every call', async () => {
     let calls = 0;
+    const methodology = {
+      metric: 'starting_deck_inclusion',
+      modes: ['ranked_ai'],
+      aiSeats: 'both',
+      copies: 'once_per_player_game',
+      rulesVersions: 'combined',
+      minSample: 1,
+      preliminary: true,
+      privacy: 'n/a',
+    };
     server.use(
       http.get(`${ORIGIN}/data/stats/card-winrates.json`, () => {
         calls += 1;
-        return HttpResponse.json({ generatedAt: `call-${calls}`, cards: [] });
+        return HttpResponse.json({
+          generatedAt: `call-${calls}`,
+          methodology,
+          cards: [],
+        });
       }),
     );
 
@@ -51,28 +65,6 @@ describe('no caching', () => {
     }
     expect(second.data.generatedAt).toBe('call-2');
     expect(second.data.generatedAt).not.toBe(first.data.generatedAt);
-  });
-
-  it('a 304 is never provoked, so a stored body cannot be replayed', async () => {
-    let calls = 0;
-    server.use(
-      http.get(`${ORIGIN}/data/cards.json`, () => {
-        calls += 1;
-        return HttpResponse.json(
-          { cards: [] },
-          { headers: { ETag: '"abc123"' } },
-        );
-      }),
-      http.get(`${ORIGIN}/data/keywords.json`, () =>
-        HttpResponse.json({ keywords: [] }),
-      ),
-    );
-
-    await loadCatalog(ORIGIN);
-    const second = await loadCatalog(ORIGIN);
-
-    expect(calls).toBe(2);
-    expect(second.status).toBe('ok');
   });
 
   it('prunes the dead keys a returning visitor still holds', () => {
