@@ -1,4 +1,4 @@
-import { fetchFresh } from './cache';
+import { fetchJson } from './http';
 import { HttpError, type StatsResult } from './errors';
 import type { CardWinrate, CardWinratesResponse } from './types';
 
@@ -10,14 +10,14 @@ function indexById(cards: CardWinrate[]): Map<string, CardWinrate> {
   return map;
 }
 
-// Statistics are one flat, unversioned file. There is no index to read, no
-// release to pin and no schemaVersion to gate on — a 404 means the
+// Statistics are one flat, unversioned file, fetched fresh on every call —
+// there is no index to read and no release to pin. A 404 means the
 // statistics simply aren't published, which the card browser must survive
 // (docs/suppression-and-states.md).
 export async function loadStats(origin: string): Promise<StatsResult> {
   let res: CardWinratesResponse;
   try {
-    res = await fetchFresh<CardWinratesResponse>(
+    res = await fetchJson<CardWinratesResponse>(
       `${origin}/data/stats/card-winrates.json`,
     );
   } catch (error) {

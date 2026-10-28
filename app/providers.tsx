@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { loadCatalog } from '../lib/api/catalog';
 import { getCatalogOrigin } from '../lib/api/config';
+import { pruneLegacyStorage } from '../lib/api/legacy-storage';
 import { loadStats } from '../lib/api/stats';
 import {
   CatalogContext,
@@ -20,11 +21,12 @@ const missingOriginError: { status: 'network-error'; error: unknown } | null =
         error: new Error('NEXT_PUBLIC_CATALOG_ORIGIN is not set'),
       };
 
-// Both halves of the API are fetched exactly once per session and shared
-// across client-side navigation. Nothing in the URL selects what to load
-// any more — there is one catalog and one statistics file — so there is no
-// useSearchParams() here, and therefore nothing that would opt the static
-// shell out of prerendering.
+// Both halves of the API are fetched fresh on every full page load (this
+// provider mounts once per load) and shared across client-side navigation
+// within that load — nothing is cached between loads. Nothing in the URL
+// selects what to load any more — there is one catalog and one statistics
+// file — so there is no useSearchParams() here, and therefore nothing that
+// would opt the static shell out of prerendering.
 export function AppProviders({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<CatalogState>(
     missingOriginError ?? { status: 'loading' },
@@ -34,6 +36,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    pruneLegacyStorage();
     if (!origin) return;
     let cancelled = false;
     loadCatalog(origin).then(

@@ -1,4 +1,4 @@
-import { fetchRevalidated } from './cache';
+import { fetchJson } from './http';
 import { HttpError, type CatalogResult } from './errors';
 import type { Card, CardsResponse, KeywordsResponse } from './types';
 
@@ -18,8 +18,8 @@ export async function loadCatalog(origin: string): Promise<CatalogResult> {
   let keywordsRes: KeywordsResponse;
   try {
     [cardsRes, keywordsRes] = await Promise.all([
-      fetchRevalidated<CardsResponse>(`${origin}/data/cards.json`),
-      fetchRevalidated<KeywordsResponse>(`${origin}/data/keywords.json`),
+      fetchJson<CardsResponse>(`${origin}/data/cards.json`),
+      fetchJson<KeywordsResponse>(`${origin}/data/keywords.json`),
     ]);
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) {
