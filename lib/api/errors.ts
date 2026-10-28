@@ -43,7 +43,7 @@ export type StatsResult =
   | { status: 'not-published' }
   | { status: 'network-error'; error: unknown };
 
-// Thrown by fetchJson for any non-2xx response. Callers map this into the
+// Thrown for any non-2xx response. Callers map this into the
 // result unions above rather than letting it propagate as a thrown
 // string/generic Error.
 export class HttpError extends Error {
